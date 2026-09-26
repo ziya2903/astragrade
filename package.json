@@ -1,0 +1,22 @@
+{
+  "name": "astragrade-monorepo",
+  "version": "1.0.0",
+  "description": "AstraGrade - AI-based onion quality assessment and grading tool by KisanAstra",
+  "scripts": {
+    "install:all": "npm --prefix server install && npm --prefix client install",
+    "server": "npm --prefix server start",
+    "client": "npm --prefix client run dev",
+    "dev": "node dev.js",
+    "start": "node dev.js"
+  },
+  "keywords": [
+    "agriculture",
+    "ai",
+    "onion-grading",
+    "kisanastra",
+    "teachable-machine",
+    "procurement"
+  ],
+  "author": "Team KisanAstra",
+  "license": "MIT"
+}

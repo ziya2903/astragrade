@@ -1,0 +1,129 @@
+[
+  {
+    "id": "ASTRA-20260926-006",
+    "centreName": "Nashik APMC Main Yard",
+    "centreCode": "NSK-01",
+    "farmerName": "Rameshwar Patil",
+    "farmerPhone": "9822012345",
+    "batchNumber": "LOT-ON-8587",
+    "timestamp": "2026-09-26T17:12:33.877Z",
+    "sampleCount": 1,
+    "gradeAPercent": 92,
+    "ursPercent": 8,
+    "breakdown": {
+      "gradeA": 92,
+      "rotten": 5.6,
+      "sprouted": 0,
+      "undersized": 2.4
+    },
+    "verdict": "Grade A",
+    "verdictMessage": "This batch qualifies as Grade A (92% Grade A confidence across 1 samples). Meets procurement standards.",
+    "inspectorName": "Rameshwar Patil",
+    "imagesCount": 1
+  },
+  {
+    "id": "ASTRA-20260926-001",
+    "centreName": "Nashik APMC Main Yard",
+    "centreCode": "NSK-01",
+    "farmerName": "Rameshwar Patil",
+    "farmerPhone": "9822012345",
+    "batchNumber": "LOT-ON-9421",
+    "timestamp": "2026-09-26T10:15:00.000Z",
+    "sampleCount": 6,
+    "gradeAPercent": 78.5,
+    "ursPercent": 21.5,
+    "breakdown": {
+      "gradeA": 78.5,
+      "rotten": 4.2,
+      "sprouted": 7.1,
+      "undersized": 10.2
+    },
+    "verdict": "Grade A",
+    "verdictMessage": "This batch qualifies as Grade A. Approved for standard procurement price.",
+    "inspectorName": "S. D. Deshmukh (Inspector #4)"
+  },
+  {
+    "id": "ASTRA-20260926-002",
+    "centreName": "Lasalgaon Procurement Hub",
+    "centreCode": "LSG-03",
+    "farmerName": "Sunil Shinde",
+    "farmerPhone": "9823198765",
+    "batchNumber": "LOT-ON-9422",
+    "timestamp": "2026-09-26T11:40:00.000Z",
+    "sampleCount": 8,
+    "gradeAPercent": 42,
+    "ursPercent": 58,
+    "breakdown": {
+      "gradeA": 42,
+      "rotten": 28.5,
+      "sprouted": 18,
+      "undersized": 11.5
+    },
+    "verdict": "URS",
+    "verdictMessage": "This batch falls under URS category due to high rot and sprout percentages.",
+    "inspectorName": "V. R. Kulkarni (Inspector #2)"
+  },
+  {
+    "id": "ASTRA-20260926-003",
+    "centreName": "Pimpalgaon Baswant Centre",
+    "centreCode": "PMP-02",
+    "farmerName": "Ganesh Gaikwad",
+    "farmerPhone": "9821456789",
+    "batchNumber": "LOT-ON-9423",
+    "timestamp": "2026-09-26T13:20:00.000Z",
+    "sampleCount": 5,
+    "gradeAPercent": 65.4,
+    "ursPercent": 34.6,
+    "breakdown": {
+      "gradeA": 65.4,
+      "rotten": 8.2,
+      "sprouted": 14.1,
+      "undersized": 12.3
+    },
+    "verdict": "Grade A",
+    "verdictMessage": "This batch qualifies as Grade A. Meets minimum procurement specifications.",
+    "inspectorName": "A. P. Joshi (Inspector #1)"
+  },
+  {
+    "id": "ASTRA-20260926-004",
+    "centreName": "Yeola Sub-Centre",
+    "centreCode": "YLA-01",
+    "farmerName": "Bhagwan Wagh",
+    "farmerPhone": "9822334455",
+    "batchNumber": "LOT-ON-9424",
+    "timestamp": "2026-09-26T15:05:00.000Z",
+    "sampleCount": 7,
+    "gradeAPercent": 31.8,
+    "ursPercent": 68.2,
+    "breakdown": {
+      "gradeA": 31.8,
+      "rotten": 39.4,
+      "sprouted": 16.5,
+      "undersized": 12.3
+    },
+    "verdict": "URS",
+    "verdictMessage": "This batch falls under URS category. Unsuitable for Grade A procurement.",
+    "inspectorName": "M. N. Khairnar (Inspector #3)"
+  },
+  {
+    "id": "ASTRA-20260926-005",
+    "centreName": "Nashik APMC Main Yard",
+    "centreCode": "NSK-01",
+    "farmerName": "Pandurang Chavan",
+    "farmerPhone": "9821998877",
+    "batchNumber": "LOT-ON-9425",
+    "timestamp": "2026-09-26T16:30:00.000Z",
+    "sampleCount": 6,
+    "gradeAPercent": 82.4,
+    "ursPercent": 17.6,
+    "breakdown": {
+      "gradeA": 82.4,
+      "rotten": 2.1,
+      "sprouted": 5.3,
+      "undersized": 10.2
+    },
+    "verdict": "Grade A",
+    "verdictMessage": "This batch qualifies as Grade A. Premium quality harvest.",
+    "inspectorName": "S. D. Deshmukh (Inspector #4)"
+  }
+]
