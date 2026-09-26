@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { loadModel, predictImage, aggregateBatchPredictions } from '../services/teachableMachine';
+import { optimizeImage } from '../services/imageOptimizer';
 import { saveReport } from '../services/api';
 import CameraCapture from '../components/CameraCapture';
 import PredictionBars from '../components/PredictionBars';
@@ -17,23 +18,20 @@ import {
   AlertCircle, 
   RotateCcw, 
   CheckCircle2, 
-  TrendingUp, 
   Building2, 
   User, 
-  Hash,
-  Eye
+  Hash
 } from 'lucide-react';
-import confetti from 'canvas-confetti';
 
 export default function ScannerPage({ onReportGenerated, setView }) {
-  const { user, activeCentre } = useAuth();
+  const { user, activeCentre, t, lang } = useAuth();
 
   // Model & State
-  const [modelStatus, setModelStatus] = useState('initializing'); // 'initializing' | 'ready' | 'error'
-  const [modelStatusText, setModelStatusText] = useState('Loading Google AI Model...');
+  const [modelStatus, setModelStatus] = useState('initializing');
+  const [modelStatusText, setModelStatusText] = useState('Checking AI Model...');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Batch Form Data
+  // Batch Form Data (Auto-filled for speed)
   const [farmerName, setFarmerName] = useState(user?.farmerName || 'Rameshwar Patil');
   const [farmerPhone, setFarmerPhone] = useState(user?.phone || '9822012345');
   const [batchNumber, setBatchNumber] = useState(`LOT-ON-${Math.floor(1000 + Math.random() * 9000)}`);
@@ -49,7 +47,7 @@ export default function ScannerPage({ onReportGenerated, setView }) {
 
   const fileInputRef = useRef(null);
 
-  // Pre-load model on mount
+  // Pre-load model on mount (local offline first)
   useEffect(() => {
     let isMounted = true;
     async function init() {
@@ -59,13 +57,13 @@ export default function ScannerPage({ onReportGenerated, setView }) {
         });
         if (isMounted) {
           setModelStatus('ready');
-          setModelStatusText('AI Model Ready (Teachable Machine TFJS)');
+          setModelStatusText('AI Model Ready (Offline)');
         }
       } catch (err) {
         console.error("Model load error:", err);
         if (isMounted) {
           setModelStatus('error');
-          setModelStatusText('Failed to load online model weights. Check internet connection.');
+          setModelStatusText('Model failed to load. Check storage permissions.');
         }
       }
     }
@@ -73,7 +71,7 @@ export default function ScannerPage({ onReportGenerated, setView }) {
     return () => { isMounted = false; };
   }, []);
 
-  // Process an image source (dataUrl / blob)
+  // Process image source
   const processImageSrc = async (imgSrc) => {
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -86,19 +84,19 @@ export default function ScannerPage({ onReportGenerated, setView }) {
           reject(err);
         }
       };
-      img.onerror = (e) => reject(new Error("Image failed to load for inference"));
+      img.onerror = () => reject(new Error("Image failed to load for inference"));
       img.src = imgSrc;
     });
   };
 
-  // Add single captured/uploaded image to batch
-  const handleAddSample = async (imgSrc) => {
+  // Add captured sample (already downscaled via CameraCapture)
+  const handleAddSample = async (optimizedImgSrc) => {
     setIsProcessing(true);
     try {
-      const prediction = await processImageSrc(imgSrc);
+      const prediction = await processImageSrc(optimizedImgSrc);
       const newSample = {
         id: `sample-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-        imageSrc: imgSrc,
+        imageSrc: optimizedImgSrc,
         prediction,
         timestamp: new Date().toISOString()
       };
@@ -109,13 +107,12 @@ export default function ScannerPage({ onReportGenerated, setView }) {
       });
     } catch (err) {
       console.error("Inference error:", err);
-      alert("Error evaluating onion image. Please try again.");
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // Handle multi-image upload from file picker
+  // Handle multi-image upload from file picker (with canvas downscaling)
   const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
@@ -123,21 +120,22 @@ export default function ScannerPage({ onReportGenerated, setView }) {
     setIsProcessing(true);
     for (const file of files) {
       try {
-        const dataUrl = await readFileAsDataURL(file);
-        const prediction = await processImageSrc(dataUrl);
+        const rawDataUrl = await readFileAsDataURL(file);
+        // Scale down to prevent mobile memory bloat
+        const optimizedUrl = await optimizeImage(rawDataUrl, 800, 0.75);
+        const prediction = await processImageSrc(optimizedUrl);
         const newSample = {
           id: `sample-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-          imageSrc: dataUrl,
+          imageSrc: optimizedUrl,
           prediction,
           timestamp: new Date().toISOString()
         };
         setSamples(prev => [...prev, newSample]);
       } catch (err) {
-        console.error("Error processing uploaded file:", err);
+        console.error("Error processing upload:", err);
       }
     }
     setIsProcessing(false);
-    // Reset file input
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -150,7 +148,6 @@ export default function ScannerPage({ onReportGenerated, setView }) {
     });
   };
 
-  // Remove a sample
   const handleRemoveSample = (indexToRemove) => {
     setSamples(prev => {
       const next = prev.filter((_, idx) => idx !== indexToRemove);
@@ -161,16 +158,16 @@ export default function ScannerPage({ onReportGenerated, setView }) {
     });
   };
 
-  // Handle Batch Load from Demo Presets
   const handleLoadMixedBatch = async (batchImages) => {
     setIsProcessing(true);
     const newItems = [];
     for (const imgSrc of batchImages) {
       try {
-        const prediction = await processImageSrc(imgSrc);
+        const optimizedUrl = await optimizeImage(imgSrc, 800, 0.75);
+        const prediction = await processImageSrc(optimizedUrl);
         newItems.push({
           id: `sample-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-          imageSrc: imgSrc,
+          imageSrc: optimizedUrl,
           prediction,
           timestamp: new Date().toISOString()
         });
@@ -182,8 +179,8 @@ export default function ScannerPage({ onReportGenerated, setView }) {
     setIsProcessing(false);
   };
 
-  // Calculate Batch Aggregation
-  const batchSummary = aggregateBatchPredictions(samples);
+  // Calculate Batch Aggregation with True Dominant Defect (Fixes CB-01)
+  const batchSummary = aggregateBatchPredictions(samples, lang);
   const activeSample = samples[selectedSampleIndex] || null;
 
   // Handle Generate Digital Report
@@ -202,9 +199,12 @@ export default function ScannerPage({ onReportGenerated, setView }) {
         gradeAPercent: batchSummary.overallGradeA,
         ursPercent: batchSummary.overallURS,
         breakdown: batchSummary.breakdown,
+        dominantClass: batchSummary.dominantClass,
         verdict: batchSummary.verdict,
         verdictMessage: batchSummary.verdictMessage,
         inspectorName: user?.name || "Procurement Officer",
+        // Retain photo evidence crops for dispute verification (Fixes UF-04)
+        sampleThumbnails: samples.slice(0, 5).map(s => s.imageSrc),
         imagesData: samples.map(s => ({
           topClass: s.prediction.topClass,
           confidence: s.prediction.confidence
@@ -212,20 +212,9 @@ export default function ScannerPage({ onReportGenerated, setView }) {
       };
 
       const savedReport = await saveReport(reportPayload);
-
-      // Trigger celebratory confetti if Grade A passes!
-      if (savedReport.verdict === 'Grade A') {
-        confetti({
-          particleCount: 80,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
-      }
-
       onReportGenerated(savedReport);
     } catch (err) {
       console.error("Report generation error:", err);
-      alert("Failed to save report to backend. Proceeding with client report.");
     } finally {
       setIsSaving(false);
     }
@@ -234,7 +223,7 @@ export default function ScannerPage({ onReportGenerated, setView }) {
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 sm:py-8 space-y-6 animate-fadeIn">
       
-      {/* Hidden file input for gallery upload */}
+      {/* Hidden file input */}
       <input
         type="file"
         ref={fileInputRef}
@@ -244,13 +233,11 @@ export default function ScannerPage({ onReportGenerated, setView }) {
         className="hidden"
       />
 
-      {/* Camera Capture Modal */}
+      {/* Continuous Burst Camera Capture Modal */}
       {isCameraOpen && (
         <CameraCapture
-          onCapture={(dataUrl) => {
-            setIsCameraOpen(false);
-            handleAddSample(dataUrl);
-          }}
+          capturedCount={samples.length}
+          onCaptureSample={(dataUrl) => handleAddSample(dataUrl)}
           onClose={() => setIsCameraOpen(false)}
         />
       )}
@@ -265,156 +252,156 @@ export default function ScannerPage({ onReportGenerated, setView }) {
       )}
 
       {/* Top Banner: Status & Quick Info */}
-      <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-stone-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border-2 border-stone-300 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">
+            <span className="w-3 h-3 rounded-full bg-emerald-600 animate-pulse"></span>
+            <span className="text-xs font-black text-emerald-900 uppercase tracking-wider">
               {modelStatusText}
             </span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-stone-900 mt-1">
-            Batch Quality Assessment
+          <h2 className="text-2xl sm:text-3xl font-black text-stone-950 mt-1">
+            {t.overallGrade}
           </h2>
-          <p className="text-xs text-stone-500 mt-0.5">
-            Capture multiple sample onions from the bag/crate. The AI evaluates each and computes aggregate Grade A vs URS.
+          <p className="text-xs font-bold text-stone-600 mt-0.5">
+            {t.scanSubtitle}
           </p>
         </div>
 
-        {/* Quick Batch Details */}
+        {/* Action Controls */}
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
           <button
             onClick={() => setIsSampleModalOpen(true)}
-            className="px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+            className="px-3.5 py-2.5 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-950 border-2 border-amber-400 text-xs font-black flex items-center gap-1.5 transition-colors cursor-pointer min-h-[44px]"
           >
-            <Sparkles className="w-4 h-4 text-amber-600" />
-            <span>Demo Onion Samples</span>
+            <Sparkles className="w-4 h-4 text-amber-700" />
+            <span>{t.demoSamples}</span>
           </button>
 
           <button
             onClick={() => setSamples([])}
             disabled={samples.length === 0}
-            className="px-3 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-600 text-xs font-bold flex items-center gap-1.5 transition-colors disabled:opacity-40"
+            className="px-3.5 py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-black flex items-center gap-1.5 transition-colors disabled:opacity-40 border border-stone-300 min-h-[44px]"
             title="Clear Current Batch"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reset Batch</span>
+            <span>{t.resetBatch}</span>
           </button>
         </div>
       </div>
 
-      {/* Batch Metadata Fields (Collapsible / Compact) */}
-      <div className="bg-white rounded-3xl p-4 sm:p-5 border border-stone-200 shadow-xs grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {/* Batch Metadata Fields (Compact & Pre-filled) */}
+      <div className="bg-white rounded-3xl p-4 sm:p-5 border-2 border-stone-300 shadow-xs grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
-          <label className="text-[11px] font-bold uppercase tracking-wider text-stone-500 flex items-center gap-1 mb-1">
-            <Building2 className="w-3.5 h-3.5 text-emerald-600" />
-            Procurement Centre
+          <label className="text-[11px] font-black uppercase tracking-wider text-stone-700 flex items-center gap-1 mb-1">
+            <Building2 className="w-3.5 h-3.5 text-emerald-700" />
+            {t.selectCentre}
           </label>
-          <div className="text-sm font-extrabold text-stone-800 truncate">
+          <div className="text-sm font-black text-stone-900 truncate">
             {activeCentre?.name || "Nashik APMC Main Yard"}
           </div>
         </div>
 
         <div>
-          <label className="text-[11px] font-bold uppercase tracking-wider text-stone-500 flex items-center gap-1 mb-1">
-            <User className="w-3.5 h-3.5 text-emerald-600" />
-            Farmer / Lot Owner
+          <label className="text-[11px] font-black uppercase tracking-wider text-stone-700 flex items-center gap-1 mb-1">
+            <User className="w-3.5 h-3.5 text-emerald-700" />
+            {t.farmerNameLabel}
           </label>
           <input
             type="text"
             value={farmerName}
             onChange={(e) => setFarmerName(e.target.value)}
-            className="w-full text-sm font-bold text-stone-900 bg-stone-50 rounded-xl px-3 py-1.5 border border-stone-200 focus:bg-white focus:outline-hidden"
+            className="w-full text-sm font-bold text-stone-950 bg-stone-100 rounded-xl px-3 py-2 border-2 border-stone-300 focus:bg-white focus:outline-hidden"
           />
         </div>
 
         <div>
-          <label className="text-[11px] font-bold uppercase tracking-wider text-stone-500 flex items-center gap-1 mb-1">
-            <Hash className="w-3.5 h-3.5 text-emerald-600" />
-            Lot / Bag Number
+          <label className="text-[11px] font-black uppercase tracking-wider text-stone-700 flex items-center gap-1 mb-1">
+            <Hash className="w-3.5 h-3.5 text-emerald-700" />
+            Lot / Token #
           </label>
           <input
             type="text"
             value={batchNumber}
             onChange={(e) => setBatchNumber(e.target.value)}
-            className="w-full text-sm font-bold text-stone-900 bg-stone-50 rounded-xl px-3 py-1.5 border border-stone-200 focus:bg-white focus:outline-hidden font-mono"
+            className="w-full text-sm font-bold text-stone-950 bg-stone-100 rounded-xl px-3 py-2 border-2 border-stone-300 focus:bg-white focus:outline-hidden font-mono"
           />
         </div>
       </div>
 
-      {/* CORE SCAN ACTION BUTTONS */}
+      {/* PRIMARY SCAN CONTROLS (Continuous Burst & Gallery) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         
-        {/* Button 1: Device Camera Capture */}
+        {/* Continuous Burst Camera Button */}
         <button
           onClick={() => setIsCameraOpen(true)}
           disabled={modelStatus !== 'ready' || isProcessing}
-          className="p-5 sm:p-6 rounded-3xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white shadow-lg shadow-emerald-700/20 flex items-center justify-between transition-all cursor-pointer disabled:opacity-50"
+          className="p-5 sm:p-6 rounded-3xl bg-emerald-700 hover:bg-emerald-800 active:scale-98 text-white shadow-lg flex items-center justify-between transition-all cursor-pointer disabled:opacity-50 min-h-[72px]"
         >
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
-              <Camera className="w-7 h-7 text-white" />
+              <Camera className="w-8 h-8 text-white" />
             </div>
             <div className="text-left">
-              <span className="text-lg sm:text-xl font-black block">Take Camera Photo</span>
-              <span className="text-xs text-emerald-100 font-medium">
-                Live mobile / webcam inspection
+              <span className="text-lg sm:text-xl font-black block">{t.takePhoto}</span>
+              <span className="text-xs text-emerald-100 font-bold">
+                Continuous burst • snaps 5 in 10s
               </span>
             </div>
           </div>
-          <Plus className="w-6 h-6 text-emerald-200 shrink-0" />
+          <Plus className="w-7 h-7 text-emerald-200 shrink-0" />
         </button>
 
-        {/* Button 2: Upload Image From Gallery */}
+        {/* Upload Button */}
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={modelStatus !== 'ready' || isProcessing}
-          className="p-5 sm:p-6 rounded-3xl bg-stone-900 hover:bg-black active:scale-98 text-white shadow-lg flex items-center justify-between transition-all cursor-pointer disabled:opacity-50"
+          className="p-5 sm:p-6 rounded-3xl bg-stone-950 hover:bg-black active:scale-98 text-white shadow-lg flex items-center justify-between transition-all cursor-pointer disabled:opacity-50 min-h-[72px]"
         >
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center shrink-0">
-              <Upload className="w-7 h-7 text-white" />
+            <div className="w-14 h-14 rounded-2xl bg-white/15 flex items-center justify-center shrink-0">
+              <Upload className="w-8 h-8 text-white" />
             </div>
             <div className="text-left">
-              <span className="text-lg sm:text-xl font-black block">Upload From Gallery</span>
-              <span className="text-xs text-stone-400 font-medium">
-                Select 1 or multiple onion photos
+              <span className="text-lg sm:text-xl font-black block">{t.uploadGallery}</span>
+              <span className="text-xs text-stone-300 font-bold">
+                Select 1 or multiple photos
               </span>
             </div>
           </div>
-          <Plus className="w-6 h-6 text-stone-400 shrink-0" />
+          <Plus className="w-7 h-7 text-stone-400 shrink-0" />
         </button>
 
       </div>
 
-      {/* INFERENCE PROGRESS INDICATOR */}
+      {/* Processing indicator */}
       {isProcessing && (
-        <div className="p-4 rounded-2xl bg-emerald-50 border-2 border-emerald-300 flex items-center justify-center gap-3 animate-pulse">
-          <div className="w-5 h-5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-sm font-extrabold text-emerald-900">
-            Running Teachable Machine AI Vision Model...
+        <div className="p-4 rounded-2xl bg-emerald-100 border-2 border-emerald-500 flex items-center justify-center gap-3">
+          <div className="w-5 h-5 border-3 border-emerald-700 border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-sm font-black text-emerald-950">
+            Evaluating onion image with AI model...
           </span>
         </div>
       )}
 
-      {/* SAMPLES GALLERY BAR & MULTI-SAMPLE INSPECTOR */}
+      {/* SAMPLES GALLERY BAR */}
       {samples.length > 0 && (
-        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-stone-200 shadow-sm space-y-4">
+        <div className="bg-white rounded-3xl p-5 sm:p-6 border-2 border-stone-300 shadow-sm space-y-4">
           
-          <div className="flex items-center justify-between pb-2 border-b border-stone-100">
+          <div className="flex items-center justify-between pb-2 border-b border-stone-200">
             <div className="flex items-center gap-2">
-              <Layers className="w-5 h-5 text-emerald-600" />
-              <h3 className="text-base font-black text-stone-900">
-                Batch Samples ({samples.length} scanned)
+              <Layers className="w-5 h-5 text-emerald-700" />
+              <h3 className="text-base font-black text-stone-950">
+                {t.batchSamples} ({samples.length})
               </h3>
             </div>
-            <span className="text-xs font-bold text-stone-500">
-              Tap any photo to view individual confidence
+            <span className="text-xs font-black text-stone-700">
+              Tap photo to inspect
             </span>
           </div>
 
-          {/* Horizontal Scroller of Sample Thumbnails */}
-          <div className="flex items-center gap-3 overflow-x-auto pb-2 pt-1">
+          {/* Sample Thumbnails with 48px Tap Targets (Fixes CB-08) */}
+          <div className="flex items-center gap-3 overflow-x-auto pb-3 pt-1">
             {samples.map((sample, idx) => {
               const isSelected = idx === selectedSampleIndex;
               const isGradeA = sample.prediction.topClass.toLowerCase() === 'gradea';
@@ -423,10 +410,10 @@ export default function ScannerPage({ onReportGenerated, setView }) {
                 <div
                   key={sample.id}
                   onClick={() => setSelectedSampleIndex(idx)}
-                  className={`relative shrink-0 w-24 h-28 rounded-2xl overflow-hidden border-2 cursor-pointer transition-all ${
+                  className={`relative shrink-0 w-28 h-32 rounded-2xl overflow-hidden border-3 cursor-pointer transition-all ${
                     isSelected
-                      ? 'border-emerald-600 ring-4 ring-emerald-500/20 scale-105 shadow-md'
-                      : 'border-stone-200 hover:border-stone-400 opacity-80 hover:opacity-100'
+                      ? 'border-emerald-700 ring-4 ring-emerald-500/30 scale-105 shadow-lg'
+                      : 'border-stone-300 hover:border-stone-500'
                   }`}
                 >
                   <img
@@ -437,45 +424,44 @@ export default function ScannerPage({ onReportGenerated, setView }) {
 
                   {/* Top class badge */}
                   <div className={`absolute bottom-0 inset-x-0 py-1 text-center text-[10px] font-black uppercase text-white ${
-                    isGradeA ? 'bg-emerald-600/90' : 'bg-rose-600/90'
+                    isGradeA ? 'bg-emerald-700' : 'bg-rose-700'
                   }`}>
                     {sample.prediction.topClass} ({sample.prediction.confidence}%)
                   </div>
 
-                  {/* Delete button */}
+                  {/* 48px Delete Target (Fixes CB-08) */}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleRemoveSample(idx);
                     }}
                     title="Remove sample"
-                    className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-rose-600 text-white rounded-full transition-colors"
+                    className="absolute top-1 right-1 w-10 h-10 bg-black/80 hover:bg-rose-700 text-white rounded-full flex items-center justify-center transition-colors min-h-[40px] min-w-[40px] cursor-pointer"
                   >
-                    <Trash2 className="w-3 h-3" />
+                    <Trash2 className="w-4 h-4 text-white" />
                   </button>
 
-                  {/* Sample index pin */}
-                  <span className="absolute top-1 left-1 px-1.5 py-0.2 rounded bg-black/60 text-white font-mono text-[9px] font-bold">
+                  <span className="absolute top-1 left-1 px-2 py-0.5 rounded bg-black/80 text-white font-mono text-[10px] font-black">
                     #{idx + 1}
                   </span>
                 </div>
               );
             })}
 
-            {/* Quick Add Button at end of scroll */}
+            {/* Quick Add Button */}
             <button
               onClick={() => setIsCameraOpen(true)}
-              className="shrink-0 w-24 h-28 rounded-2xl border-2 border-dashed border-stone-300 hover:border-emerald-500 hover:bg-emerald-50/50 flex flex-col items-center justify-center text-stone-500 hover:text-emerald-700 transition-all cursor-pointer"
+              className="shrink-0 w-28 h-32 rounded-2xl border-3 border-dashed border-stone-400 hover:border-emerald-700 hover:bg-emerald-50 flex flex-col items-center justify-center text-stone-700 hover:text-emerald-800 transition-all cursor-pointer"
             >
-              <Plus className="w-6 h-6 mb-1" />
-              <span className="text-[11px] font-bold">Add More</span>
+              <Plus className="w-8 h-8 mb-1" />
+              <span className="text-xs font-black">Add More</span>
             </button>
           </div>
 
-          {/* ACTIVE SAMPLE BREAKDOWN VIEW */}
+          {/* ACTIVE SAMPLE BREAKDOWN */}
           {activeSample && (
-            <div className="mt-4 p-4 rounded-2xl bg-stone-50 border border-stone-200 flex flex-col md:flex-row items-center gap-6">
-              <div className="w-32 h-32 rounded-2xl overflow-hidden shadow-md shrink-0 border-2 border-stone-300 bg-stone-200">
+            <div className="mt-4 p-4 rounded-2xl bg-stone-100 border-2 border-stone-300 flex flex-col md:flex-row items-center gap-6">
+              <div className="w-32 h-32 rounded-2xl overflow-hidden shadow-md shrink-0 border-2 border-stone-400 bg-stone-200">
                 <img
                   src={activeSample.imageSrc}
                   alt="Inspected Sample"
@@ -486,20 +472,17 @@ export default function ScannerPage({ onReportGenerated, setView }) {
               <div className="w-full flex-1">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono font-bold text-stone-500">
+                    <span className="text-xs font-mono font-black text-stone-800">
                       Sample #{selectedSampleIndex + 1} of {samples.length}
                     </span>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-extrabold uppercase ${
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-black uppercase ${
                       activeSample.prediction.topClass.toLowerCase() === 'gradea'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : 'bg-rose-100 text-rose-800'
+                        ? 'bg-emerald-200 text-emerald-950 border border-emerald-400'
+                        : 'bg-rose-200 text-rose-950 border border-rose-400'
                     }`}>
                       {activeSample.prediction.topClass}
                     </span>
                   </div>
-                  <span className="text-xs text-stone-500">
-                    Live Model Confidence
-                  </span>
                 </div>
 
                 <PredictionBars prediction={activeSample.prediction} compact={true} />
@@ -510,125 +493,108 @@ export default function ScannerPage({ onReportGenerated, setView }) {
         </div>
       )}
 
-      {/* AGGREGATED BATCH RESULT SECTION (IMPORTANT LOGIC from prompt) */}
+      {/* AGGREGATED BATCH RESULT SECTION */}
       {samples.length > 0 && (
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border-2 border-emerald-500/50 shadow-lg space-y-6">
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border-3 border-emerald-600 shadow-xl space-y-6">
           
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-stone-200">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b-2 border-stone-200">
             <div>
-              <span className="text-xs font-black uppercase tracking-wider text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-md">
-                Aggregated Multi-Sample Analysis
+              <span className="text-xs font-black uppercase tracking-wider text-emerald-900 bg-emerald-100 px-3 py-1 rounded-md border border-emerald-300">
+                Multi-Sample Batch Result
               </span>
-              <h3 className="text-2xl sm:text-3xl font-black text-stone-900 mt-1">
-                Overall Batch Grade
+              <h3 className="text-2xl sm:text-3xl font-black text-stone-950 mt-1">
+                {t.overallGrade}
               </h3>
-              <p className="text-xs text-stone-500">
-                Synthesized across all {samples.length} onion images to prevent single-onion dispute bias.
-              </p>
             </div>
 
-            {/* Verdict Stamp */}
-            <div className={`px-5 py-2.5 rounded-2xl font-black text-base sm:text-lg flex items-center gap-2.5 border-2 ${
+            {/* Verdict Stamp with Correct Defect (Fixes CB-01) */}
+            <div className={`px-5 py-3 rounded-2xl font-black text-base sm:text-lg flex items-center gap-2.5 border-3 ${
               batchSummary.verdict === 'Grade A'
-                ? 'bg-emerald-50 text-emerald-800 border-emerald-500'
-                : 'bg-rose-50 text-rose-800 border-rose-500'
+                ? 'bg-emerald-100 text-emerald-950 border-emerald-600'
+                : 'bg-rose-100 text-rose-950 border-rose-600'
             }`}>
               {batchSummary.verdict === 'Grade A' ? (
-                <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+                <CheckCircle2 className="w-7 h-7 text-emerald-700" />
               ) : (
-                <AlertCircle className="w-6 h-6 text-rose-600" />
+                <AlertCircle className="w-7 h-7 text-rose-700" />
               )}
               <span>VERDICT: {batchSummary.verdict}</span>
             </div>
           </div>
 
           {/* Verdict Message Bar */}
-          <div className={`p-4 rounded-2xl text-xs sm:text-sm font-semibold flex items-center gap-3 ${
+          <div className={`p-4 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-3 border-2 ${
             batchSummary.verdict === 'Grade A'
-              ? 'bg-emerald-50 text-emerald-900 border border-emerald-200'
-              : 'bg-amber-50 text-amber-900 border border-amber-200'
+              ? 'bg-emerald-50 text-emerald-950 border-emerald-400'
+              : 'bg-amber-50 text-amber-950 border-amber-400'
           }`}>
             <Sparkles className="w-5 h-5 shrink-0" />
             <span>{batchSummary.verdictMessage}</span>
           </div>
 
-          {/* Two-Column Grid: Visual Chart.js + Breakdown Bars */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-            
-            {/* Chart.js Visual Pie/Doughnut Chart */}
-            <div className="bg-stone-50 p-4 rounded-2xl border border-stone-200">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-stone-600 mb-2 text-center">
-                Grade Distribution Chart (Chart.js)
-              </h4>
-              <BatchSummaryChart breakdown={batchSummary.breakdown} />
-            </div>
-
-            {/* Batch Aggregated Percentage Bars */}
-            <div className="space-y-4">
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-stone-600">
-                Aggregated Batch Parameters
-              </h4>
-              <PredictionBars
-                prediction={{
-                  gradeAPercent: batchSummary.overallGradeA,
-                  ursPercent: batchSummary.overallURS,
-                  raw: [
-                    { className: 'GradeA', percentage: batchSummary.breakdown.gradeA },
-                    { className: 'Rotten', percentage: batchSummary.breakdown.rotten },
-                    { className: 'Sprouted', percentage: batchSummary.breakdown.sprouted },
-                    { className: 'Undersized', percentage: batchSummary.breakdown.undersized }
-                  ],
-                  topClass: batchSummary.overallGradeA >= 60 ? 'GradeA' : 'Rotten'
-                }}
-              />
-            </div>
-
+          {/* Batch Aggregated Percentage Bars (Fixes CB-01 Defect Inversion) */}
+          <div className="space-y-4">
+            <PredictionBars
+              prediction={{
+                gradeAPercent: batchSummary.overallGradeA,
+                ursPercent: batchSummary.overallURS,
+                dominantClass: batchSummary.dominantClass,
+                raw: [
+                  { className: 'GradeA', percentage: batchSummary.breakdown.gradeA },
+                  { className: 'Rotten', percentage: batchSummary.breakdown.rotten },
+                  { className: 'Sprouted', percentage: batchSummary.breakdown.sprouted },
+                  { className: 'Undersized', percentage: batchSummary.breakdown.undersized }
+                ],
+                // FIX CB-01: True dominant class instead of hardcoding 'Rotten'
+                topClass: batchSummary.dominantClass
+              }}
+            />
           </div>
 
-          {/* GENERATE DIGITAL REPORT BUTTON */}
-          <div className="pt-4 border-t border-stone-200 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-xs text-stone-500 font-medium text-center sm:text-left">
-              Report will be permanently timestamped and saved to the mandi database.
-            </div>
+          {/* Sticky/Prominent Action Button */}
+          <div className="pt-4 border-t-2 border-stone-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <span className="text-xs text-stone-700 font-bold text-center sm:text-left">
+              Assessment will be permanently timestamped and saved with photo evidence.
+            </span>
 
             <button
               onClick={handleGenerateReport}
               disabled={isSaving}
-              className="w-full sm:w-auto px-8 py-4 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-extrabold rounded-2xl shadow-xl shadow-emerald-700/25 flex items-center justify-center gap-3 transition-all cursor-pointer text-base sm:text-lg disabled:opacity-50"
+              className="w-full sm:w-auto px-8 py-4 bg-emerald-700 hover:bg-emerald-800 active:scale-98 text-white font-black rounded-2xl shadow-xl flex items-center justify-center gap-3 transition-all cursor-pointer text-base sm:text-lg disabled:opacity-50 min-h-[56px]"
             >
               <FileCheck2 className="w-6 h-6" />
-              <span>{isSaving ? 'Saving & Generating...' : 'Generate Official Digital Report'}</span>
+              <span>{isSaving ? 'Saving & Generating...' : t.generateReport}</span>
             </button>
           </div>
 
         </div>
       )}
 
-      {/* EMPTY STATE PROMPT */}
+      {/* Empty State */}
       {samples.length === 0 && (
-        <div className="p-8 sm:p-12 text-center rounded-3xl border-2 border-dashed border-stone-300 bg-white/70 space-y-4">
-          <div className="w-16 h-16 rounded-3xl bg-emerald-50 text-emerald-700 flex items-center justify-center mx-auto shadow-xs">
+        <div className="p-8 sm:p-12 text-center rounded-3xl border-3 border-dashed border-stone-300 bg-white space-y-4">
+          <div className="w-16 h-16 rounded-3xl bg-emerald-100 text-emerald-800 flex items-center justify-center mx-auto">
             <Camera className="w-8 h-8" />
           </div>
           <div>
-            <h3 className="text-lg font-black text-stone-900">
+            <h3 className="text-lg font-black text-stone-950">
               No Onion Samples Added Yet
             </h3>
-            <p className="text-xs sm:text-sm text-stone-500 max-w-md mx-auto mt-1">
-              Start by taking a live photo through your camera, picking photos from your gallery, or loading the built-in demo onion specimens.
+            <p className="text-xs sm:text-sm text-stone-600 font-bold max-w-md mx-auto mt-1">
+              Start by taking rapid continuous photos, picking images from your gallery, or loading demo specimens.
             </p>
           </div>
 
           <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
             <button
               onClick={() => setIsCameraOpen(true)}
-              className="px-5 py-3 rounded-xl bg-emerald-600 text-white font-bold text-xs sm:text-sm shadow-sm hover:bg-emerald-700 cursor-pointer"
+              className="px-6 py-3.5 rounded-xl bg-emerald-700 text-white font-black text-sm shadow-md hover:bg-emerald-800 cursor-pointer min-h-[48px]"
             >
-              Open Camera
+              Open Camera (Burst)
             </button>
             <button
               onClick={() => setIsSampleModalOpen(true)}
-              className="px-5 py-3 rounded-xl bg-amber-100 text-amber-900 font-bold text-xs sm:text-sm hover:bg-amber-200 cursor-pointer"
+              className="px-6 py-3.5 rounded-xl bg-amber-100 text-amber-950 font-black text-sm hover:bg-amber-200 cursor-pointer border border-amber-300 min-h-[48px]"
             >
               Load Demo Presets
             </button>

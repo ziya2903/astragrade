@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { verifyOtp as apiVerifyOtp, adminLogin as apiAdminLogin } from '../services/api';
+import { TRANSLATIONS } from '../services/translations';
 
 const AuthContext = createContext(null);
 
@@ -21,6 +22,21 @@ export function AuthProvider({ children }) {
       return { id: "NSK-01", name: "Nashik APMC Main Yard", code: "NSK-01" };
     }
   });
+
+  // Language state: 'en' | 'mr' | 'hi'
+  const [lang, setLang] = useState(() => {
+    try {
+      return localStorage.getItem('astragrade_lang') || 'en';
+    } catch {
+      return 'en';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('astragrade_lang', lang);
+    } catch (e) {}
+  }, [lang]);
 
   useEffect(() => {
     if (user) {
@@ -69,6 +85,9 @@ export function AuthProvider({ children }) {
     setActiveCentre(centre);
   };
 
+  // Translations shortcut
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -78,7 +97,10 @@ export function AuthProvider({ children }) {
       loginWithAdmin,
       logout,
       isAuthenticated: !!user,
-      isAdmin: user?.role === 'admin'
+      isAdmin: user?.role === 'admin',
+      lang,
+      setLang,
+      t
     }}>
       {children}
     </AuthContext.Provider>

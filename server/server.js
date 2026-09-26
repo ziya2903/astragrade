@@ -7,9 +7,9 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors());
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '15mb' }));
 
-// Ensure data directory exists for fallback persistence
+// Ensure data directory exists
 const DATA_DIR = path.join(__dirname, 'data');
 const REPORTS_FILE = path.join(DATA_DIR, 'reports.json');
 
@@ -36,6 +36,7 @@ const INITIAL_REPORTS = [
       sprouted: 7.1,
       undersized: 10.2
     },
+    dominantClass: "GradeA",
     verdict: "Grade A",
     verdictMessage: "This batch qualifies as Grade A. Approved for standard procurement price.",
     inspectorName: "S. D. Deshmukh (Inspector #4)"
@@ -57,8 +58,9 @@ const INITIAL_REPORTS = [
       sprouted: 18.0,
       undersized: 11.5
     },
+    dominantClass: "Rotten",
     verdict: "URS",
-    verdictMessage: "This batch falls under URS category due to high rot and sprout percentages.",
+    verdictMessage: "This batch falls under URS category due to high rot percentage.",
     inspectorName: "V. R. Kulkarni (Inspector #2)"
   },
   {
@@ -78,6 +80,7 @@ const INITIAL_REPORTS = [
       sprouted: 14.1,
       undersized: 12.3
     },
+    dominantClass: "GradeA",
     verdict: "Grade A",
     verdictMessage: "This batch qualifies as Grade A. Meets minimum procurement specifications.",
     inspectorName: "A. P. Joshi (Inspector #1)"
@@ -95,34 +98,14 @@ const INITIAL_REPORTS = [
     ursPercent: 68.2,
     breakdown: {
       gradeA: 31.8,
-      rotten: 39.4,
+      rotten: 12.4,
       sprouted: 16.5,
-      undersized: 12.3
+      undersized: 39.3
     },
+    dominantClass: "Undersized",
     verdict: "URS",
-    verdictMessage: "This batch falls under URS category. Unsuitable for Grade A procurement.",
+    verdictMessage: "This batch falls under URS category primarily due to undersized bulbs (< 45mm).",
     inspectorName: "M. N. Khairnar (Inspector #3)"
-  },
-  {
-    id: "ASTRA-20260926-005",
-    centreName: "Nashik APMC Main Yard",
-    centreCode: "NSK-01",
-    farmerName: "Pandurang Chavan",
-    farmerPhone: "9821998877",
-    batchNumber: "LOT-ON-9425",
-    timestamp: "2026-09-26T16:30:00.000Z",
-    sampleCount: 6,
-    gradeAPercent: 82.4,
-    ursPercent: 17.6,
-    breakdown: {
-      gradeA: 82.4,
-      rotten: 2.1,
-      sprouted: 5.3,
-      undersized: 10.2
-    },
-    verdict: "Grade A",
-    verdictMessage: "This batch qualifies as Grade A. Premium quality harvest.",
-    inspectorName: "S. D. Deshmukh (Inspector #4)"
   }
 ];
 
@@ -140,11 +123,14 @@ function getStoredReports() {
   }
 }
 
+// Atomic file save (prevents corruption from concurrent writes)
 function saveStoredReports(reports) {
+  const tmpFile = `${REPORTS_FILE}.tmp`;
   try {
-    fs.writeFileSync(REPORTS_FILE, JSON.stringify(reports, null, 2));
+    fs.writeFileSync(tmpFile, JSON.stringify(reports, null, 2));
+    fs.renameSync(tmpFile, REPORTS_FILE);
   } catch (err) {
-    console.error("Error writing reports file:", err);
+    console.error("Error writing reports file atomically:", err);
   }
 }
 
@@ -153,30 +139,8 @@ const CENTRES = [
   { id: "NSK-01", name: "Nashik APMC Main Yard", state: "Maharashtra", district: "Nashik" },
   { id: "LSG-03", name: "Lasalgaon Procurement Hub", state: "Maharashtra", district: "Nashik" },
   { id: "PMP-02", name: "Pimpalgaon Baswant Centre", state: "Maharashtra", district: "Nashik" },
-  { id: "YLA-01", name: "Yeola Sub-Centre", state: "Maharashtra", district: "Nashik" },
-  { id: "KLV-02", name: "Kalwan Krishi Kendra", state: "Maharashtra", district: "Nashik" },
-  { id: "DND-01", name: "Dindori Agri Collection Point", state: "Maharashtra", district: "Nashik" }
+  { id: "YLA-01", name: "Yeola Sub-Centre", state: "Maharashtra", district: "Nashik" }
 ];
-
-// In-memory OTP storage for demo
-const mockOtps = new Map();
-
-// --- ROUTES ---
-
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    app: 'AstraGrade API',
-    model: 'Teachable Machine - bIzzGa24O',
-    timestamp: new Date().toISOString()
-  });
-});
-
-// Centres List
-app.get('/api/centres', (req, res) => {
-  res.json({ success: true, centres: CENTRES });
-});
 
 // Mock Auth: Request OTP
 app.post('/api/auth/send-otp', (req, res) => {
@@ -185,15 +149,12 @@ app.post('/api/auth/send-otp', (req, res) => {
     return res.status(400).json({ success: false, message: 'Valid 10-digit mobile number required' });
   }
 
-  // Generate a friendly 4-digit code (e.g. 1234 or random)
-  const otp = '1234'; // Fixed for effortless demo, or any 4-digit code accepted
-  mockOtps.set(phone, otp);
-
+  const otp = '1234';
   return res.json({
     success: true,
     message: 'OTP sent successfully',
-    demoOtp: otp, // Returned so frontend can display "Demo OTP: 1234" helper
-    note: 'In this demo mode, you can use OTP 1234 or any 4 digits.'
+    demoOtp: otp,
+    note: 'In this demo mode, any 4 digits are accepted.'
   });
 });
 
@@ -204,7 +165,6 @@ app.post('/api/auth/verify-otp', (req, res) => {
     return res.status(400).json({ success: false, message: 'Phone and OTP are required' });
   }
 
-  // Accept demo OTP '1234' or any 4-digit numeric code for frictionless demo
   if (otp.length === 4 && /^\d{4}$/.test(otp)) {
     const centre = CENTRES.find(c => c.id === centreId) || CENTRES[0];
     const user = {
@@ -223,7 +183,6 @@ app.post('/api/auth/verify-otp', (req, res) => {
 // Mock Auth: Admin Login
 app.post('/api/auth/admin-login', (req, res) => {
   const { email, password } = req.body;
-  // Demo admin credentials
   if (
     (email === 'admin@kisanastra.gov.in' || email === 'admin@astragrade.org' || email === 'admin') &&
     (password === 'admin123' || password === 'admin')
@@ -245,7 +204,7 @@ app.post('/api/auth/admin-login', (req, res) => {
   });
 });
 
-// GET all reports (with optional filtering)
+// GET all reports
 app.get('/api/reports', (req, res) => {
   const { centreCode, verdict, limit } = req.query;
   let reports = getStoredReports();
@@ -257,7 +216,6 @@ app.get('/api/reports', (req, res) => {
     reports = reports.filter(r => r.verdict.toLowerCase() === verdict.toLowerCase());
   }
 
-  // Sort newest first
   reports.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
   if (limit) {
@@ -277,7 +235,7 @@ app.get('/api/reports/:id', (req, res) => {
   res.json({ success: true, report });
 });
 
-// POST new quality report
+// POST new quality report (with atomic write and retained thumbnails)
 app.post('/api/reports', (req, res) => {
   const {
     centreName,
@@ -289,14 +247,16 @@ app.post('/api/reports', (req, res) => {
     gradeAPercent,
     ursPercent,
     breakdown,
+    dominantClass,
     verdict,
     verdictMessage,
     inspectorName,
+    sampleThumbnails,
     imagesData
   } = req.body;
 
   if (gradeAPercent === undefined || ursPercent === undefined) {
-    return res.status(400).json({ success: false, message: 'Grade A and URS percentages are required' });
+    return res.status(400).json({ success: false, message: 'Percentages required' });
   }
 
   const reports = getStoredReports();
@@ -321,11 +281,13 @@ app.post('/api/reports', (req, res) => {
       sprouted: Number(Number(breakdown?.sprouted || 0).toFixed(1)),
       undersized: Number(Number(breakdown?.undersized || 0).toFixed(1))
     },
+    dominantClass: dominantClass || (gradeAPercent >= 60 ? 'GradeA' : 'Undersized'),
     verdict: verdict || (gradeAPercent >= 60 ? "Grade A" : "URS"),
     verdictMessage: verdictMessage || (gradeAPercent >= 60
       ? "This batch qualifies as Grade A. Approved for standard procurement price."
       : "This batch falls under URS category. Quality falls below standard Grade A baseline."),
     inspectorName: inspectorName || "Authorized Centre Inspector",
+    sampleThumbnails: sampleThumbnails || [],
     imagesCount: sampleCount || 1
   };
 
@@ -343,13 +305,7 @@ app.get('/api/admin/stats', (req, res) => {
   if (totalBatches === 0) {
     return res.json({
       success: true,
-      stats: {
-        totalBatches: 0,
-        avgGradeAPercent: 0,
-        gradeACount: 0,
-        ursCount: 0,
-        centrePerformance: []
-      }
+      stats: { totalBatches: 0, avgGradeAPercent: 0, gradeACount: 0, ursCount: 0, centrePerformance: [] }
     });
   }
 
@@ -358,7 +314,6 @@ app.get('/api/admin/stats', (req, res) => {
   const gradeACount = reports.filter(r => r.verdict === "Grade A").length;
   const ursCount = reports.filter(r => r.verdict === "URS").length;
 
-  // Breakdown by centre
   const centreMap = {};
   reports.forEach(r => {
     const cName = r.centreName || "Unknown Centre";
@@ -377,7 +332,6 @@ app.get('/api/admin/stats', (req, res) => {
     avgGradeA: Number((c.gradeASum / c.count).toFixed(1)),
     gradeACount: c.gradeACount,
     ursCount: c.ursCount,
-    // Flag centre if avg Grade A is unusually low (< 50%)
     flagged: (c.gradeASum / c.count) < 50
   }));
 

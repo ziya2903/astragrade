@@ -1,24 +1,36 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Camera, SwitchCamera, X, AlertCircle } from 'lucide-react';
+import { Camera, SwitchCamera, X, Check, AlertCircle, Layers } from 'lucide-react';
+import { optimizeImage } from '../services/imageOptimizer';
 
-export default function CameraCapture({ onCapture, onClose }) {
+export default function CameraCapture({ onCaptureSample, onClose, capturedCount = 0 }) {
   const videoRef = useRef(null);
-  const [facingMode, setFacingMode] = useState('environment'); // Default to rear camera on phones
-  const [stream, setStream] = useState(null);
+  const streamRef = useRef(null);
+  const [facingMode, setFacingMode] = useState('environment'); // Default to rear camera
   const [cameraError, setCameraError] = useState(null);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [flashAnimation, setFlashAnimation] = useState(false);
+  const [burstCount, setBurstCount] = useState(capturedCount);
+
+  // Stop camera stream cleanly without leaving Android hardware locked
+  const stopStream = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => {
+        try { track.stop(); } catch (e) {}
+      });
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+  };
 
   useEffect(() => {
-    let currentStream = null;
+    let isActive = true;
 
     async function startCamera() {
       setIsInitializing(true);
       setCameraError(null);
-
-      // Stop any existing tracks
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
+      stopStream();
 
       try {
         const constraints = {
@@ -31,31 +43,35 @@ export default function CameraCapture({ onCapture, onClose }) {
         };
 
         const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
-        currentStream = mediaStream;
-        setStream(mediaStream);
+        if (!isActive) {
+          mediaStream.getTracks().forEach(t => t.stop());
+          return;
+        }
 
+        streamRef.current = mediaStream;
         if (videoRef.current) {
           videoRef.current.srcObject = mediaStream;
           await videoRef.current.play();
         }
       } catch (err) {
         console.error("Camera access error:", err);
-        setCameraError(
-          err.name === 'NotAllowedError'
-            ? 'Camera access denied. Please grant camera permissions in your browser.'
-            : 'Unable to access camera on this device. You can still use Image Upload.'
-        );
+        if (isActive) {
+          setCameraError(
+            err.name === 'NotAllowedError'
+              ? 'Camera permission denied. Grant permission in browser settings.'
+              : 'Camera hardware busy or unavailable. Switch cameras or use Gallery upload.'
+          );
+        }
       } finally {
-        setIsInitializing(false);
+        if (isActive) setIsInitializing(false);
       }
     }
 
     startCamera();
 
     return () => {
-      if (currentStream) {
-        currentStream.getTracks().forEach(track => track.stop());
-      }
+      isActive = false;
+      stopStream();
     };
   }, [facingMode]);
 
@@ -63,8 +79,13 @@ export default function CameraCapture({ onCapture, onClose }) {
     setFacingMode(prev => prev === 'environment' ? 'user' : 'environment');
   };
 
-  const handleCapture = () => {
+  // Continuous Burst Snap: captures without terminating camera stream
+  const handleSnap = async () => {
     if (!videoRef.current) return;
+
+    // Visual shutter flash
+    setFlashAnimation(true);
+    setTimeout(() => setFlashAnimation(false), 200);
 
     const video = videoRef.current;
     const canvas = document.createElement('canvas');
@@ -74,53 +95,66 @@ export default function CameraCapture({ onCapture, onClose }) {
     const ctx = canvas.getContext('2d');
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+    // Downscale and compress to prevent mobile memory bloat
+    const optimizedDataUrl = await optimizeImage(canvas, 800, 0.75);
 
-    // Stop camera before closing
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-    }
+    setBurstCount(prev => prev + 1);
+    onCaptureSample(optimizedDataUrl);
+  };
 
-    onCapture(dataUrl);
+  const handleFinish = () => {
+    stopStream();
+    onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center p-3 sm:p-6 animate-fadeIn">
+    <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-md flex flex-col items-center justify-between p-3 sm:p-6 animate-fadeIn select-none">
+      
       {/* Top Bar */}
-      <div className="w-full max-w-lg flex items-center justify-between text-white mb-3 px-2">
+      <div className="w-full max-w-lg flex items-center justify-between text-white px-2 py-1">
         <div className="flex items-center gap-2">
-          <Camera className="w-5 h-5 text-emerald-400" />
-          <span className="font-bold text-sm tracking-wide">Live Onion Scanner</span>
+          <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-xs">
+            {burstCount}
+          </div>
+          <div>
+            <span className="font-extrabold text-sm tracking-wide block">
+              Continuous Burst Mode
+            </span>
+            <span className="text-[11px] text-stone-400">
+              Tap shutter repeatedly for each onion
+            </span>
+          </div>
         </div>
+
         <div className="flex items-center gap-2">
           <button
             onClick={toggleFacingMode}
-            title="Switch Front/Rear Camera"
-            className="p-2 bg-stone-800/80 hover:bg-stone-700 text-stone-200 rounded-full transition-colors"
+            title="Switch Camera"
+            className="p-3 bg-stone-800 hover:bg-stone-700 text-stone-200 rounded-full transition-colors min-h-[48px] min-w-[48px] flex items-center justify-center cursor-pointer"
           >
             <SwitchCamera className="w-5 h-5" />
           </button>
           <button
-            onClick={onClose}
-            title="Close Camera"
-            className="p-2 bg-stone-800/80 hover:bg-stone-700 text-stone-200 rounded-full transition-colors"
+            onClick={handleFinish}
+            title="Finish / Close"
+            className="p-3 bg-stone-800 hover:bg-stone-700 text-stone-200 rounded-full transition-colors min-h-[48px] min-w-[48px] flex items-center justify-center cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
       </div>
 
-      {/* Viewport Frame */}
-      <div className="relative w-full max-w-lg aspect-4/3 sm:aspect-square bg-stone-900 rounded-3xl overflow-hidden shadow-2xl border-2 border-stone-700 flex items-center justify-center">
+      {/* Camera Viewport Frame (Square 1:1 matching model expectation) */}
+      <div className="relative w-full max-w-md aspect-square bg-stone-900 rounded-3xl overflow-hidden shadow-2xl border-4 border-stone-800 flex items-center justify-center">
         {cameraError ? (
           <div className="p-6 text-center text-rose-300 space-y-3">
             <AlertCircle className="w-12 h-12 mx-auto text-rose-400" />
-            <p className="text-sm font-semibold">{cameraError}</p>
+            <p className="text-sm font-bold">{cameraError}</p>
             <button
-              onClick={onClose}
-              className="mt-3 px-5 py-2.5 bg-white text-stone-900 font-bold rounded-xl text-sm"
+              onClick={handleFinish}
+              className="mt-3 px-5 py-3 bg-white text-stone-950 font-black rounded-xl text-sm"
             >
-              Use Gallery / File Upload Instead
+              Back to Upload
             </button>
           </div>
         ) : (
@@ -132,47 +166,71 @@ export default function CameraCapture({ onCapture, onClose }) {
               className="w-full h-full object-cover"
             />
 
-            {/* Target Reticle Overlay */}
-            <div className="absolute inset-8 sm:inset-12 pointer-events-none border-2 border-dashed border-emerald-400/70 rounded-3xl flex flex-col justify-between p-4">
+            {/* Shutter flash overlay */}
+            {flashAnimation && (
+              <div className="absolute inset-0 bg-white/70 pointer-events-none transition-opacity" />
+            )}
+
+            {/* Target Reticle (High-contrast yellow/emerald for outdoor glare) */}
+            <div className="absolute inset-8 pointer-events-none border-2 border-dashed border-amber-400/90 rounded-2xl flex flex-col justify-between p-3">
               <div className="flex justify-between">
-                <div className="w-6 h-6 border-t-4 border-l-4 border-emerald-400 -mt-1 -ml-1"></div>
-                <div className="w-6 h-6 border-t-4 border-r-4 border-emerald-400 -mt-1 -mr-1"></div>
+                <div className="w-6 h-6 border-t-4 border-l-4 border-amber-400"></div>
+                <div className="w-6 h-6 border-t-4 border-r-4 border-amber-400"></div>
               </div>
               <div className="text-center">
-                <span className="bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold text-emerald-300">
-                  Center single onion or batch inside frame
+                <span className="bg-black/75 px-3 py-1 rounded-full text-[11px] font-black text-amber-300 tracking-wide border border-amber-400/50">
+                  Center single onion inside square
                 </span>
               </div>
               <div className="flex justify-between">
-                <div className="w-6 h-6 border-b-4 border-l-4 border-emerald-400 -mb-1 -ml-1"></div>
-                <div className="w-6 h-6 border-b-4 border-r-4 border-emerald-400 -mb-1 -mr-1"></div>
+                <div className="w-6 h-6 border-b-4 border-l-4 border-amber-400"></div>
+                <div className="w-6 h-6 border-b-4 border-r-4 border-amber-400"></div>
               </div>
             </div>
 
             {isInitializing && (
-              <div className="absolute inset-0 bg-stone-900/80 flex items-center justify-center text-white text-sm font-bold">
-                Starting Camera...
+              <div className="absolute inset-0 bg-stone-950/80 flex items-center justify-center text-white text-sm font-extrabold">
+                Starting Camera Hardware...
               </div>
             )}
           </>
         )}
       </div>
 
-      {/* Shutter Button */}
+      {/* Controls Bar: Shutter + Done Button */}
       {!cameraError && (
-        <div className="mt-5 flex items-center justify-center gap-6">
+        <div className="w-full max-w-lg flex items-center justify-around py-4">
+          
+          {/* Photos Count Badge */}
+          <div className="text-center w-20">
+            <span className="text-2xl font-black text-white">{burstCount}</span>
+            <span className="text-[10px] uppercase font-bold text-stone-400 block">Samples</span>
+          </div>
+
+          {/* Big Tactile Shutter Button (64x64 min tap area) */}
           <button
-            onClick={handleCapture}
+            onClick={handleSnap}
             disabled={isInitializing}
-            className="w-20 h-20 rounded-full border-4 border-white bg-emerald-600 hover:bg-emerald-500 active:scale-95 transition-all shadow-lg flex items-center justify-center text-white group cursor-pointer disabled:opacity-50"
+            className="w-20 h-20 rounded-full border-4 border-white bg-emerald-600 hover:bg-emerald-500 active:scale-95 transition-all shadow-2xl flex items-center justify-center cursor-pointer min-h-[64px] min-w-[64px]"
             aria-label="Capture onion photo"
           >
-            <div className="w-14 h-14 rounded-full bg-white/30 group-hover:bg-white/40 transition-colors flex items-center justify-center">
+            <div className="w-14 h-14 rounded-full bg-white/30 flex items-center justify-center">
               <Camera className="w-8 h-8 text-white drop-shadow-md" />
             </div>
           </button>
+
+          {/* Done Button */}
+          <button
+            onClick={handleFinish}
+            className="w-20 py-3 rounded-2xl bg-white text-stone-900 hover:bg-stone-100 active:scale-95 font-black text-xs flex flex-col items-center justify-center cursor-pointer shadow-md min-h-[48px]"
+          >
+            <Check className="w-5 h-5 text-emerald-600 mb-0.5" />
+            <span>Done</span>
+          </button>
+
         </div>
       )}
+
     </div>
   );
 }

@@ -2,25 +2,24 @@
  * AstraGrade AI Model Service
  *
  * Integrates Google Teachable Machine image classification model
- * Model Base URL: https://teachablemachine.withgoogle.com/models/bIzzGa24O/
+ * Prioritizes local bundled model (/models/onion_v1/) for 100% offline rural mandi reliability,
+ * and falls back to Google's hosted URL if needed.
  * Classes: GradeA, Rotten, Sprouted, Undersized
  */
 
-const MODEL_BASE_URL = "https://teachablemachine.withgoogle.com/models/bIzzGa24O/";
-const MODEL_URL = `${MODEL_BASE_URL}model.json`;
-const METADATA_URL = `${MODEL_BASE_URL}metadata.json`;
+const LOCAL_MODEL_URL = "/models/onion_v1/model.json";
+const LOCAL_METADATA_URL = "/models/onion_v1/metadata.json";
+
+const REMOTE_BASE_URL = "https://teachablemachine.withgoogle.com/models/bIzzGa24O/";
+const REMOTE_MODEL_URL = `${REMOTE_BASE_URL}model.json`;
+const REMOTE_METADATA_URL = `${REMOTE_BASE_URL}metadata.json`;
 
 let modelInstance = null;
-let isLoading = false;
 let loadPromise = null;
 
-/**
- * Ensures TensorFlow.js and @teachablemachine/image are loaded in window
- */
 async function ensureLibrariesLoaded() {
   if (window.tmImage) return true;
 
-  // If not yet available on window, try dynamic script injection
   return new Promise((resolve, reject) => {
     let checkInterval = setInterval(() => {
       if (window.tmImage) {
@@ -29,17 +28,16 @@ async function ensureLibrariesLoaded() {
       }
     }, 100);
 
-    // Timeout after 8 seconds
     setTimeout(() => {
       clearInterval(checkInterval);
       if (window.tmImage) resolve(true);
-      else reject(new Error("Teachable Machine library failed to load from CDN."));
+      else reject(new Error("Teachable Machine library failed to load."));
     }, 8000);
   });
 }
 
 /**
- * Loads and caches the Teachable Machine model
+ * Loads and caches model. Tries local bundled offline files first.
  */
 export async function loadModel(onProgress) {
   if (modelInstance) return modelInstance;
@@ -47,15 +45,26 @@ export async function loadModel(onProgress) {
 
   loadPromise = (async () => {
     try {
-      if (onProgress) onProgress("Checking libraries...");
+      if (onProgress) onProgress("Initializing AI engine...");
       await ensureLibrariesLoaded();
 
-      if (onProgress) onProgress("Downloading AI model weights...");
-      modelInstance = await window.tmImage.load(MODEL_URL, METADATA_URL);
-      console.log("[AstraGrade AI] Model loaded successfully:", modelInstance.getTotalClasses(), "classes");
+      // 1. Try local offline model first
+      try {
+        if (onProgress) onProgress("Loading local offline model...");
+        modelInstance = await window.tmImage.load(LOCAL_MODEL_URL, LOCAL_METADATA_URL);
+        console.log("[AstraGrade AI] Loaded LOCAL offline model successfully");
+        return modelInstance;
+      } catch (localErr) {
+        console.warn("[AstraGrade AI] Local model failed, falling back to remote URL:", localErr.message);
+      }
+
+      // 2. Fall back to remote model
+      if (onProgress) onProgress("Connecting to cloud model...");
+      modelInstance = await window.tmImage.load(REMOTE_MODEL_URL, REMOTE_METADATA_URL);
+      console.log("[AstraGrade AI] Loaded REMOTE model successfully");
       return modelInstance;
     } catch (err) {
-      console.error("[AstraGrade AI] Failed to load remote model:", err);
+      console.error("[AstraGrade AI] Failed to load model:", err);
       throw err;
     } finally {
       loadPromise = null;
@@ -67,20 +76,17 @@ export async function loadModel(onProgress) {
 
 /**
  * Classifies a single HTMLImageElement, HTMLCanvasElement, or HTMLVideoElement
- * Returns array of { className, probability, percentage }
  */
 export async function predictImage(imageElement) {
   const model = await loadModel();
   const predictions = await model.predict(imageElement);
 
-  // Format predictions into clean percentages
   const formatted = predictions.map(p => ({
     className: p.className,
     probability: p.probability,
     percentage: Number((p.probability * 100).toFixed(1))
   }));
 
-  // Identify top prediction
   let topClass = formatted[0];
   for (const p of formatted) {
     if (p.probability > topClass.probability) {
@@ -88,7 +94,6 @@ export async function predictImage(imageElement) {
     }
   }
 
-  // Calculate Grade A vs URS (Rotten + Sprouted + Undersized)
   const gradeAItem = formatted.find(p => p.className.toLowerCase() === 'gradea') || { percentage: 0 };
   const rottenItem = formatted.find(p => p.className.toLowerCase() === 'rotten') || { percentage: 0 };
   const sproutedItem = formatted.find(p => p.className.toLowerCase() === 'sprouted') || { percentage: 0 };
@@ -114,16 +119,18 @@ export async function predictImage(imageElement) {
 }
 
 /**
- * Aggregates results across multiple scanned images in a batch
- * Calculates mean percentages and overall batch verdict
+ * Aggregates results across multiple scanned images in a batch.
+ * Correctly identifies the true dominant defect when Grade A < 60%
+ * (Fixes CB-01 Defect Inversion Bug).
  */
-export function aggregateBatchPredictions(samples) {
+export function aggregateBatchPredictions(samples, lang = 'en') {
   if (!samples || samples.length === 0) {
     return {
       sampleCount: 0,
       overallGradeA: 0,
       overallURS: 0,
       breakdown: { gradeA: 0, rotten: 0, sprouted: 0, undersized: 0 },
+      dominantClass: "No Samples",
       verdict: "No Samples",
       verdictType: "neutral",
       verdictMessage: "Scan or upload onion images to assess quality."
@@ -154,14 +161,27 @@ export function aggregateBatchPredictions(samples) {
   const avgUndersized = Number((sumUndersized / count).toFixed(1));
   const avgURS = Number((avgRotten + avgSprouted + avgUndersized).toFixed(1));
 
-  // Decision rule: If Grade A >= 60% (or majority is Grade A), qualifies as Grade A
   const isGradeAPassing = avgGradeA >= 60.0;
   const verdict = isGradeAPassing ? "Grade A" : "URS";
   const verdictType = isGradeAPassing ? "success" : "warning";
-  
+
+  // FIX CB-01: Calculate true dominant defect dynamically
+  let dominantClass = 'GradeA';
+  if (!isGradeAPassing) {
+    const defects = [
+      { name: 'Undersized', val: avgUndersized },
+      { name: 'Sprouted', val: avgSprouted },
+      { name: 'Rotten', val: avgRotten }
+    ];
+    defects.sort((a, b) => b.val - a.val);
+    dominantClass = defects[0].name;
+  }
+
   const verdictMessage = isGradeAPassing
     ? `This batch qualifies as Grade A (${avgGradeA}% Grade A confidence across ${count} samples). Meets procurement standards.`
-    : `This batch falls under URS category (${avgURS}% defect rate: Rotten ${avgRotten}%, Sprouted ${avgSprouted}%, Undersized ${avgUndersized}%).`;
+    : `This batch falls under URS category (Primary reason: ${dominantClass} at ${
+        dominantClass === 'Undersized' ? avgUndersized : dominantClass === 'Sprouted' ? avgSprouted : avgRotten
+      }%). Total URS defect: ${avgURS}%.`;
 
   return {
     sampleCount: count,
@@ -175,39 +195,9 @@ export function aggregateBatchPredictions(samples) {
     },
     gradeACount,
     ursCount: count - gradeACount,
+    dominantClass,
     verdict,
     verdictType,
     verdictMessage
   };
 }
-
-export const CLASS_COLORS = {
-  GradeA: {
-    bg: 'bg-emerald-500',
-    text: 'text-emerald-700',
-    border: 'border-emerald-500',
-    lightBg: 'bg-emerald-50',
-    badge: 'bg-emerald-100 text-emerald-800'
-  },
-  Rotten: {
-    bg: 'bg-rose-500',
-    text: 'text-rose-700',
-    border: 'border-rose-500',
-    lightBg: 'bg-rose-50',
-    badge: 'bg-rose-100 text-rose-800'
-  },
-  Sprouted: {
-    bg: 'bg-amber-500',
-    text: 'text-amber-700',
-    border: 'border-amber-500',
-    lightBg: 'bg-amber-50',
-    badge: 'bg-amber-100 text-amber-800'
-  },
-  Undersized: {
-    bg: 'bg-indigo-500',
-    text: 'text-indigo-700',
-    border: 'border-indigo-500',
-    lightBg: 'bg-indigo-50',
-    badge: 'bg-indigo-100 text-indigo-800'
-  }
-};
