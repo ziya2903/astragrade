@@ -4,6 +4,7 @@
  */
 
 import { generateSyntheticOnionImage } from './sampleImages';
+import { syncWithCloud, mergeReports } from './cloudSync';
 
 const API_BASE = '/api';
 
@@ -181,15 +182,19 @@ export async function fetchReports(filters = {}) {
     if (filters.verdict) params.append('verdict', filters.verdict);
     if (filters.limit) params.append('limit', filters.limit);
 
+    const localList = getCleanLocalStorageReports();
+
     const res = await fetch(`${API_BASE}/reports?${params.toString()}`);
     if (res.ok) {
       const data = await res.json();
-      if (data.reports && data.reports.length > 0) {
-        // Merge with showcase if fewer than 3
-        return data.reports;
+      if (Array.isArray(data.reports) && data.reports.length > 0) {
+        // Merge cloud reports with local reports
+        const merged = mergeReports(localList, data.reports);
+        localStorage.setItem('astragrade_reports', JSON.stringify(merged));
+        return merged;
       }
     }
-    return getCleanLocalStorageReports();
+    return localList;
   } catch (err) {
     return getCleanLocalStorageReports();
   }
@@ -216,39 +221,46 @@ export async function saveReport(reportData) {
     timestamp: new Date().toISOString()
   };
 
-  try {
-    fetch(`${API_BASE}/reports`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(report)
-    }).catch(() => {});
-  } catch (e) {}
-
-  // Sync to local storage
+  // 1. Instant local-first write (0ms offline support)
   try {
     const list = getCleanLocalStorageReports();
     list.unshift(report);
     localStorage.setItem('astragrade_reports', JSON.stringify(list));
   } catch (e) {}
 
+  // 2. Background sync to cloud
+  try {
+    fetch(`${API_BASE}/reports`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(report)
+    }).then(() => {
+      syncWithCloud().catch(() => {});
+    }).catch(() => {});
+  } catch (e) {}
+
   return report;
 }
 
 export async function deleteReport(id) {
+  // 1. Instant local deletion
+  let updated = [];
+  try {
+    const list = getCleanLocalStorageReports();
+    updated = list.filter(r => r.id !== id);
+    localStorage.setItem('astragrade_reports', JSON.stringify(updated));
+  } catch (e) {}
+
+  // 2. Propagate deletion to serverless API
   try {
     fetch(`${API_BASE}/reports/${id}`, {
       method: 'DELETE'
+    }).then(() => {
+      syncWithCloud().catch(() => {});
     }).catch(() => {});
   } catch (e) {}
 
-  try {
-    const list = getCleanLocalStorageReports();
-    const updated = list.filter(r => r.id !== id);
-    localStorage.setItem('astragrade_reports', JSON.stringify(updated));
-    return updated;
-  } catch (e) {
-    return [];
-  }
+  return updated;
 }
 
 export async function fetchAdminStats() {
