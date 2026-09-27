@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { generateReportPDF } from '../services/pdfGenerator';
+import { deleteReport } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { 
   Download, 
@@ -11,13 +12,15 @@ import {
   ShieldCheck, 
   ScanLine,
   Layers,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Trash2
 } from 'lucide-react';
 
 export default function ReportViewPage({ report, setView, onNewScan }) {
   const { t } = useAuth();
   const [downloading, setDownloading] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [viewMode, setViewMode] = useState('certificate'); // 'certificate' | 'thermal'
 
   if (!report) {
@@ -64,6 +67,21 @@ Date: ${new Date(report.timestamp).toLocaleString()}`;
     navigator.clipboard.writeText(text);
     setCopySuccess(true);
     setTimeout(() => setCopySuccess(false), 2000);
+  };
+
+  const handleDelete = async () => {
+    const confirmDelete = window.confirm(`Permanently delete grading report for ${report.farmerName || 'Lot'} (${report.id})?`);
+    if (!confirmDelete) return;
+
+    setIsDeleting(true);
+    try {
+      await deleteReport(report.id);
+      setView('history');
+    } catch (err) {
+      console.error("Failed to delete report:", err);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -125,6 +143,15 @@ Date: ${new Date(report.timestamp).toLocaleString()}`;
             title="Copy Text Summary"
           >
             <Share2 className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className="p-2.5 bg-rose-50 hover:bg-rose-100 border-2 border-rose-200 text-rose-700 rounded-xl transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer disabled:opacity-50"
+            title="Delete this Report"
+          >
+            <Trash2 className="w-4 h-4 text-rose-600" />
           </button>
         </div>
       </div>

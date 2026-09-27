@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchReports } from '../services/api';
+import { fetchReports, deleteReport } from '../services/api';
 import { generateReportPDF } from '../services/pdfGenerator';
 import { 
   History, 
@@ -12,7 +12,8 @@ import {
   Calendar, 
   MapPin, 
   FileText,
-  ArrowUpDown
+  ArrowUpDown,
+  Trash2
 } from 'lucide-react';
 
 export default function HistoryPage({ onViewReport, setView }) {
@@ -52,6 +53,19 @@ export default function HistoryPage({ onViewReport, setView }) {
   const handleDownload = (e, report) => {
     e.stopPropagation();
     generateReportPDF(report);
+  };
+
+  const handleDeleteReport = async (e, report) => {
+    e.stopPropagation();
+    const confirmed = window.confirm(`Permanently delete grading slip for ${report.farmerName || 'Lot'} (${report.id})?`);
+    if (!confirmed) return;
+    
+    try {
+      await deleteReport(report.id);
+      setReports(prev => prev.filter(r => r.id !== report.id));
+    } catch (err) {
+      console.error("Failed to delete report:", err);
+    }
   };
 
   return (
@@ -232,6 +246,14 @@ export default function HistoryPage({ onViewReport, setView }) {
                       >
                         <Eye className="w-3.5 h-3.5" />
                         <span>View</span>
+                      </button>
+
+                      <button
+                        onClick={(e) => handleDeleteReport(e, report)}
+                        title="Delete Report"
+                        className="p-2.5 bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-600 rounded-xl transition-all cursor-pointer shadow-2xs"
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>

@@ -9,11 +9,15 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json({ limit: '15mb' }));
 
-const DATA_DIR = path.join(__dirname, 'data');
+const DATA_DIR = process.env.VERCEL ? '/tmp' : path.join(__dirname, 'data');
 const REPORTS_FILE = path.join(DATA_DIR, 'reports.json');
 
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+try {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+} catch (e) {
+  console.warn("Could not create DATA_DIR:", e.message);
 }
 
 // Initial seed data for Bokaro Mandi, Jharkhand
@@ -86,8 +90,14 @@ const INITIAL_REPORTS = [
   }
 ];
 
-// Write or overwrite seed reports
-fs.writeFileSync(REPORTS_FILE, JSON.stringify(INITIAL_REPORTS, null, 2));
+// Write seed reports if not present
+try {
+  if (!fs.existsSync(REPORTS_FILE)) {
+    fs.writeFileSync(REPORTS_FILE, JSON.stringify(INITIAL_REPORTS, null, 2));
+  }
+} catch (e) {
+  console.warn("Could not write REPORTS_FILE:", e.message);
+}
 
 function getStoredReports() {
   try {
@@ -216,6 +226,15 @@ app.post('/api/reports', (req, res) => {
   saveStoredReports(reports);
 
   res.status(201).json({ success: true, report: newReport });
+});
+
+app.delete('/api/reports/:id', (req, res) => {
+  const { id } = req.params;
+  let reports = getStoredReports();
+  const initialLength = reports.length;
+  reports = reports.filter(r => r.id !== id);
+  saveStoredReports(reports);
+  res.json({ success: true, deleted: reports.length < initialLength, id });
 });
 
 app.get('/api/admin/stats', (req, res) => {

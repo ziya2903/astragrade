@@ -173,7 +173,7 @@ export default function ScannerPage({ onReportGenerated, setView }) {
         verdict: batchSummary.verdict,
         verdictMessage: batchSummary.verdictMessage,
         inspectorName: user?.name || "Bokaro Gate Inspector",
-        sampleThumbnails: samples.slice(0, 5).map(s => s.imageSrc),
+        sampleThumbnails: samples.slice(0, 10).map(s => s.imageSrc),
         imagesData: samples.map(s => ({
           topClass: s.prediction.topClass,
           confidence: s.prediction.confidence
@@ -287,7 +287,7 @@ export default function ScannerPage({ onReportGenerated, setView }) {
       {/* TWO PRIMARY ACTIONS: CAMERA & GALLERY UPLOAD */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         
-        {/* Continuous Burst Camera Button */}
+        {/* Live Camera Button */}
         <button
           onClick={() => setIsCameraOpen(true)}
           disabled={modelStatus !== 'ready' || isProcessing}
@@ -300,7 +300,7 @@ export default function ScannerPage({ onReportGenerated, setView }) {
             <div className="text-left">
               <span className="text-lg font-black block">{t.takePhoto}</span>
               <span className="text-xs text-amber-200 font-bold">
-                Snaps 5 real onions in burst mode
+                Snap onion photos directly from tray
               </span>
             </div>
           </div>
@@ -320,7 +320,7 @@ export default function ScannerPage({ onReportGenerated, setView }) {
             <div className="text-left">
               <span className="text-lg font-black block">{t.uploadGallery}</span>
               <span className="text-xs text-stone-300 font-bold">
-                Select 1 to 5 onion photos
+                Upload single or multiple onion photos
               </span>
             </div>
           </div>
@@ -535,7 +535,7 @@ export default function ScannerPage({ onReportGenerated, setView }) {
               Ready to Scan Onions
             </h3>
             <p className="text-xs sm:text-sm text-stone-600 font-bold max-w-md mx-auto mt-1">
-              Place real onions on your tray, then click below to start continuous camera scanning or upload photos.
+              Place onions on your tray, then click below to start camera scanning or upload photos.
             </p>
           </div>
 
@@ -544,13 +544,13 @@ export default function ScannerPage({ onReportGenerated, setView }) {
               onClick={() => setIsCameraOpen(true)}
               className="px-6 py-3.5 rounded-xl bg-[#0d3b32] text-white font-black text-sm shadow-md hover:bg-[#092c25] cursor-pointer min-h-[48px]"
             >
-              Open Camera (Burst Scan)
+              Open Camera
             </button>
             <button
               onClick={() => fileInputRef.current?.click()}
               className="px-6 py-3.5 rounded-xl bg-[#2a241e] text-white font-black text-sm hover:bg-black cursor-pointer min-h-[48px]"
             >
-              Upload Onion Photos
+              Upload Photos
             </button>
           </div>
         </div>

@@ -118,10 +118,10 @@ export default function CameraCapture({ onCaptureSample, onClose, capturedCount 
           </div>
           <div>
             <span className="font-extrabold text-sm tracking-wide block">
-              Continuous Burst Mode
+              Live Camera
             </span>
             <span className="text-[11px] text-stone-400">
-              Tap shutter repeatedly for each onion
+              Tap shutter for each onion sample
             </span>
           </div>
         </div>

@@ -234,6 +234,23 @@ export async function saveReport(reportData) {
   return report;
 }
 
+export async function deleteReport(id) {
+  try {
+    fetch(`${API_BASE}/reports/${id}`, {
+      method: 'DELETE'
+    }).catch(() => {});
+  } catch (e) {}
+
+  try {
+    const list = getCleanLocalStorageReports();
+    const updated = list.filter(r => r.id !== id);
+    localStorage.setItem('astragrade_reports', JSON.stringify(updated));
+    return updated;
+  } catch (e) {
+    return [];
+  }
+}
+
 export async function fetchAdminStats() {
   const reports = await fetchReports();
   const totalBatches = reports.length;

@@ -104,7 +104,7 @@ export default function DashboardPage({ setView, onViewReport }) {
               <div className="text-left">
                 <span className="text-base font-black block">{t.startScan}</span>
                 <span className="text-[11px] font-bold text-stone-800">
-                  Continuous burst on sample tray
+                  Live camera scan on sample tray
                 </span>
               </div>
             </div>
@@ -121,7 +121,7 @@ export default function DashboardPage({ setView, onViewReport }) {
               <div className="text-left">
                 <span className="text-base font-black block">{t.uploadPhotos}</span>
                 <span className="text-[11px] font-bold text-emerald-200">
-                  Select 1 to 5 saved onion photos
+                  Upload saved onion photos
                 </span>
               </div>
             </div>
