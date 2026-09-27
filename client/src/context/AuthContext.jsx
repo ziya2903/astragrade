@@ -15,24 +15,32 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     try {
       const saved = localStorage.getItem('astragrade_inspector');
-      return saved ? JSON.parse(saved) : {
-        name: "Mandi Officer",
-        role: "staff",
-        badge: "GATE-01"
-      };
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed?.name?.includes('Deshmukh')) {
+          return { name: "Bokaro Gate Inspector", role: "staff", badge: "GATE-01" };
+        }
+        return parsed;
+      }
+      return { name: "Bokaro Gate Inspector", role: "staff", badge: "GATE-01" };
     } catch {
-      return {
-        name: "Mandi Officer",
-        role: "staff",
-        badge: "GATE-01"
-      };
+      return { name: "Bokaro Gate Inspector", role: "staff", badge: "GATE-01" };
     }
   });
 
   const [activeCentre, setActiveCentre] = useState(() => {
     try {
       const saved = localStorage.getItem('astragrade_centre');
-      return saved ? JSON.parse(saved) : DEFAULT_MANDI;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Force migration away from stale Nashik / Maharashtra data
+        if (parsed?.name?.includes('Nashik') || parsed?.id?.includes('NSK')) {
+          localStorage.setItem('astragrade_centre', JSON.stringify(DEFAULT_MANDI));
+          return DEFAULT_MANDI;
+        }
+        return parsed;
+      }
+      return DEFAULT_MANDI;
     } catch {
       return DEFAULT_MANDI;
     }
@@ -67,7 +75,7 @@ export function AuthProvider({ children }) {
   }, [activeCentre]);
 
   const updateInspectorName = (name) => {
-    setUser(prev => ({ ...prev, name: name || "Mandi Officer" }));
+    setUser(prev => ({ ...prev, name: name || "Bokaro Gate Inspector" }));
   };
 
   const t = TRANSLATIONS[lang] || TRANSLATIONS.en;

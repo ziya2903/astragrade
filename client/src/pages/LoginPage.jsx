@@ -14,18 +14,18 @@ import {
 } from 'lucide-react';
 
 const SAMPLE_CENTRES = [
-  { id: "NSK-01", name: "Nashik APMC Main Yard", code: "NSK-01" },
-  { id: "LSG-03", name: "Lasalgaon Procurement Hub", code: "LSG-03" },
-  { id: "PMP-02", name: "Pimpalgaon Baswant Centre", code: "PMP-02" },
-  { id: "YLA-01", name: "Yeola Sub-Centre", code: "YLA-01" }
+  { id: "BKR-JH-01", name: "Bokaro Krishi Mandi", code: "BKR-JH-01" },
+  { id: "RNC-JH-02", name: "Ranchi APMC Hub", code: "RNC-JH-02" },
+  { id: "DHN-JH-03", name: "Dhanbad Agri Yard", code: "DHN-JH-03" },
+  { id: "HZB-JH-04", name: "Hazaribagh Krishi Bazaar", code: "HZB-JH-04" }
 ];
 
 export default function LoginPage({ onLoginSuccess }) {
   const { loginWithPhone, loginWithAdmin, t, lang, setLang } = useAuth();
   const [tab, setTab] = useState('farmer');
 
-  const [phone, setPhone] = useState('9822012345');
-  const [farmerName, setFarmerName] = useState('Rameshwar Patil');
+  const [phone, setPhone] = useState('9835123456');
+  const [farmerName, setFarmerName] = useState('Rajesh Kumar Mahto');
   const [selectedCentre, setSelectedCentre] = useState(SAMPLE_CENTRES[0]);
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);

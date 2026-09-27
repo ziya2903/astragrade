@@ -17,6 +17,7 @@ import {
   CheckCircle2, 
   Building2, 
   User, 
+  Truck,
   Hash
 } from 'lucide-react';
 
@@ -28,10 +29,10 @@ export default function ScannerPage({ onReportGenerated, setView }) {
   const [modelStatusText, setModelStatusText] = useState('Checking AI Model...');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Batch Form Data (Auto-filled for rapid gate throughput)
-  const [farmerName, setFarmerName] = useState('Farmer Lot');
-  const [farmerPhone, setFarmerPhone] = useState('');
-  const [batchNumber, setBatchNumber] = useState(`LOT-${Math.floor(100 + Math.random() * 900)}`);
+  // Mandi Gate Token Data (Clear, unambiguous fields)
+  const [farmerName, setFarmerName] = useState('Rajesh Kumar Mahto');
+  const [batchNumber, setBatchNumber] = useState(`JH-09-AB-${Math.floor(1000 + Math.random() * 9000)}`);
+  const [bagCount, setBagCount] = useState('50 Bags');
 
   // Scanned Samples: array of { id, imageSrc, prediction, timestamp }
   const [samples, setSamples] = useState([]);
@@ -159,11 +160,11 @@ export default function ScannerPage({ onReportGenerated, setView }) {
     setIsSaving(true);
     try {
       const reportPayload = {
-        centreName: activeCentre?.name || "Bokaro Krishi Mandi",
-        centreCode: activeCentre?.code || "BKR-JH-01",
-        farmerName: farmerName || `Lot (${batchNumber})`,
-        farmerPhone: farmerPhone || "N/A",
-        batchNumber,
+        centreName: "Bokaro Krishi Mandi",
+        centreCode: "BKR-JH-01",
+        farmerName: farmerName || "Farmer Lot",
+        farmerPhone: "N/A",
+        batchNumber: `${batchNumber} (${bagCount})`,
         sampleCount: batchSummary.sampleCount,
         gradeAPercent: batchSummary.overallGradeA,
         ursPercent: batchSummary.overallURS,
@@ -171,7 +172,7 @@ export default function ScannerPage({ onReportGenerated, setView }) {
         dominantClass: batchSummary.dominantClass,
         verdict: batchSummary.verdict,
         verdictMessage: batchSummary.verdictMessage,
-        inspectorName: user?.name || "Mandi Officer",
+        inspectorName: user?.name || "Bokaro Gate Inspector",
         sampleThumbnails: samples.slice(0, 5).map(s => s.imageSrc),
         imagesData: samples.map(s => ({
           topClass: s.prediction.topClass,
@@ -238,41 +239,47 @@ export default function ScannerPage({ onReportGenerated, setView }) {
         </button>
       </div>
 
-      {/* Batch Metadata Fields (Compact & Clean) */}
+      {/* Clear, Mandi-Friendly Fields (Farmer Name, Vehicle/Lot #, Total Bags) */}
       <div className="bg-white rounded-3xl p-4 sm:p-5 border-2 border-[#e6dfd1] shadow-xs grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
           <label className="text-[11px] font-black uppercase tracking-wider text-stone-600 flex items-center gap-1 mb-1">
-            <Building2 className="w-3.5 h-3.5 text-[#0d3b32]" />
-            Location
-          </label>
-          <div className="text-sm font-black text-stone-900 truncate">
-            {activeCentre?.name || "Bokaro Mandi, Jharkhand"}
-          </div>
-        </div>
-
-        <div>
-          <label className="text-[11px] font-black uppercase tracking-wider text-stone-600 flex items-center gap-1 mb-1">
             <User className="w-3.5 h-3.5 text-[#0d3b32]" />
-            Farmer / Lot Name
+            Farmer Name (किसान का नाम)
           </label>
           <input
             type="text"
             value={farmerName}
             onChange={(e) => setFarmerName(e.target.value)}
+            placeholder="उदा. राजेश कुमार महतो"
             className="w-full text-sm font-bold text-stone-950 bg-stone-50 rounded-xl px-3 py-2 border-2 border-stone-300 focus:bg-white focus:outline-hidden"
           />
         </div>
 
         <div>
           <label className="text-[11px] font-black uppercase tracking-wider text-stone-600 flex items-center gap-1 mb-1">
-            <Hash className="w-3.5 h-3.5 text-[#0d3b32]" />
-            Batch / Token #
+            <Truck className="w-3.5 h-3.5 text-[#0d3b32]" />
+            Vehicle / Lot # (गाड़ी / लॉट नं.)
           </label>
           <input
             type="text"
             value={batchNumber}
             onChange={(e) => setBatchNumber(e.target.value)}
+            placeholder="उदा. JH-09-AB-4821"
             className="w-full text-sm font-black text-stone-950 bg-stone-50 rounded-xl px-3 py-2 border-2 border-stone-300 focus:bg-white focus:outline-hidden font-mono"
+          />
+        </div>
+
+        <div>
+          <label className="text-[11px] font-black uppercase tracking-wider text-stone-600 flex items-center gap-1 mb-1">
+            <Layers className="w-3.5 h-3.5 text-[#0d3b32]" />
+            Quantity (कुल बोरियां)
+          </label>
+          <input
+            type="text"
+            value={bagCount}
+            onChange={(e) => setBagCount(e.target.value)}
+            placeholder="उदा. 50 Bags"
+            className="w-full text-sm font-bold text-stone-950 bg-stone-50 rounded-xl px-3 py-2 border-2 border-stone-300 focus:bg-white focus:outline-hidden"
           />
         </div>
       </div>

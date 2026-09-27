@@ -184,10 +184,10 @@ export default function AdminDashboardPage({ onViewReport, setView }) {
             </thead>
             <tbody className="divide-y divide-stone-100 font-semibold text-stone-800">
               {(stats?.centrePerformance || [
-                { name: "Nashik APMC Main Yard", totalBatches: 2, avgGradeA: 80.5, gradeACount: 2, ursCount: 0, flagged: false },
-                { name: "Lasalgaon Procurement Hub", totalBatches: 1, avgGradeA: 42.0, gradeACount: 0, ursCount: 1, flagged: true },
-                { name: "Pimpalgaon Baswant Centre", totalBatches: 1, avgGradeA: 65.4, gradeACount: 1, ursCount: 0, flagged: false },
-                { name: "Yeola Sub-Centre", totalBatches: 1, avgGradeA: 31.8, gradeACount: 0, ursCount: 1, flagged: true }
+                { name: "Bokaro Krishi Mandi", totalBatches: 2, avgGradeA: 82.5, gradeACount: 2, ursCount: 0, flagged: false },
+                { name: "Ranchi APMC Hub", totalBatches: 1, avgGradeA: 74.0, gradeACount: 1, ursCount: 0, flagged: false },
+                { name: "Dhanbad Agri Yard", totalBatches: 1, avgGradeA: 45.4, gradeACount: 0, ursCount: 1, flagged: true },
+                { name: "Hazaribagh Krishi Bazaar", totalBatches: 1, avgGradeA: 38.0, gradeACount: 0, ursCount: 1, flagged: true }
               ]).map((c, i) => (
                 <tr key={i} className="hover:bg-stone-50">
                   <td className="p-3 font-bold text-stone-900">{c.name}</td>

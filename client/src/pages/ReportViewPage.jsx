@@ -148,11 +148,11 @@ Date: ${new Date(report.timestamp).toLocaleString()}`;
               <span>{new Date(report.timestamp).toLocaleString()}</span>
             </div>
             <div className="flex justify-between">
-              <span>FARMER:</span>
+              <span>FARMER (किसान):</span>
               <span className="font-bold">{report.farmerName}</span>
             </div>
             <div className="flex justify-between">
-              <span>LOT NO:</span>
+              <span>VEHICLE/LOT (गाड़ी/लॉट):</span>
               <span className="font-bold">{report.batchNumber}</span>
             </div>
             <div className="flex justify-between">
@@ -242,7 +242,7 @@ Date: ${new Date(report.timestamp).toLocaleString()}`;
 
             <div>
               <span className="font-black text-stone-500 uppercase tracking-wider block text-[10px]">
-                Farmer / Lot Owner
+                Farmer Name (किसान का नाम)
               </span>
               <span className="font-black text-stone-950 text-sm mt-0.5 block">
                 {report.farmerName}
@@ -252,7 +252,7 @@ Date: ${new Date(report.timestamp).toLocaleString()}`;
 
             <div>
               <span className="font-black text-stone-500 uppercase tracking-wider block text-[10px]">
-                Batch / Token #
+                Vehicle / Lot # (गाड़ी / लॉट नं.)
               </span>
               <span className="font-black text-stone-950 text-sm mt-0.5 block font-mono">
                 {report.batchNumber}
