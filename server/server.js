@@ -193,16 +193,16 @@ app.post('/api/reports', (req, res) => {
   const reports = getStoredReports();
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
   const uniqueSeq = String(reports.length + 1).padStart(3, '0');
-  const reportId = `ASTRA-${dateStr}-${uniqueSeq}`;
+  const targetId = req.body.id || `ASTRA-${dateStr}-${uniqueSeq}`;
 
   const newReport = {
-    id: reportId,
+    id: targetId,
     centreName: centreName || "Bokaro Krishi Mandi",
     centreCode: centreCode || "BKR-JH-01",
     farmerName: farmerName || "Farmer Lot",
     farmerPhone: farmerPhone || "N/A",
     batchNumber: batchNumber || `LOT-${Math.floor(100 + Math.random() * 900)}`,
-    timestamp: new Date().toISOString(),
+    timestamp: req.body.timestamp || new Date().toISOString(),
     sampleCount: sampleCount || 1,
     gradeAPercent: Number(Number(gradeAPercent).toFixed(1)),
     ursPercent: Number(Number(ursPercent).toFixed(1)),
@@ -222,10 +222,20 @@ app.post('/api/reports', (req, res) => {
     imagesCount: sampleCount || 1
   };
 
-  reports.unshift(newReport);
+  const existingIndex = reports.findIndex(r => r.id === targetId);
+  if (existingIndex >= 0) {
+    reports[existingIndex] = { ...reports[existingIndex], ...newReport };
+  } else {
+    reports.unshift(newReport);
+  }
   saveStoredReports(reports);
 
   res.status(201).json({ success: true, report: newReport });
+});
+
+app.post('/api/reports/reset', (req, res) => {
+  saveStoredReports(INITIAL_REPORTS);
+  res.json({ success: true, reports: INITIAL_REPORTS });
 });
 
 app.delete('/api/reports/:id', (req, res) => {

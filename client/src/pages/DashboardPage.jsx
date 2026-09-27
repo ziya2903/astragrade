@@ -19,13 +19,17 @@ import {
 export default function DashboardPage({ setView, onViewReport }) {
   const { user, activeCentre, t } = useAuth();
   const [recentReports, setRecentReports] = useState([]);
+  const [gradeAPercent, setGradeAPercent] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadRecent() {
       try {
-        const reports = await fetchReports({ limit: 5 });
-        setRecentReports(reports || []);
+        const all = await fetchReports();
+        const top5 = (all || []).slice(0, 5);
+        setRecentReports(top5);
+        const gradeACount = (all || []).filter(r => r.verdict === 'Grade A').length;
+        setGradeAPercent((all || []).length > 0 ? Math.round((gradeACount / (all || []).length) * 100) : 0);
       } catch (err) {
         console.error("Failed to load dashboard reports:", err);
       } finally {
@@ -34,10 +38,6 @@ export default function DashboardPage({ setView, onViewReport }) {
     }
     loadRecent();
   }, []);
-
-  const totalScans = recentReports.length;
-  const gradeACount = recentReports.filter(r => r.verdict === 'Grade A').length;
-  const gradeAPercent = totalScans > 0 ? Math.round((gradeACount / totalScans) * 100) : 0;
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 sm:py-8 space-y-6 sm:space-y-8 animate-fadeIn">
@@ -87,7 +87,7 @@ export default function DashboardPage({ setView, onViewReport }) {
             {t.scanOnionsBtn}
           </h3>
           <p className="text-emerald-100 text-sm mt-1 font-bold max-w-xl">
-            Evaluate a batch of 5 real onions to get instant, impartial Grade A vs URS percentages and official slips.
+            Evaluate onion samples from a batch to get instant, impartial Grade A vs URS percentages and official slips.
           </p>
         </div>
 
@@ -168,7 +168,7 @@ export default function DashboardPage({ setView, onViewReport }) {
           </div>
         ) : (
           <div className="space-y-3">
-            {recentReports.map((report) => {
+            {recentReports.slice(0, 5).map((report) => {
               const isGradeA = report.verdict === 'Grade A';
               return (
                 <div

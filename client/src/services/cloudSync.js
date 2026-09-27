@@ -86,101 +86,94 @@ initSupabaseClient(getSupabaseConfig());
  */
 export function mergeReports(localReports, remoteReports) {
   const map = new Map();
-  // Add local reports first
-  (localReports || []).forEach(r => {
-    if (r && r.id) map.set(r.id, r);
-  });
-  // Merge or add remote reports
-  (remoteReports || []).forEach(r => {
-    if (r && r.id) {
-      if (!map.has(r.id)) {
-        map.set(r.id, r);
-      } else {
-        // If both have it, take whichever has later timestamp
-        const existing = map.get(r.id);
-        const existingTime = new Date(existing.timestamp || 0).getTime();
-        const remoteTime = new Date(r.timestamp || 0).getTime();
-        if (remoteTime > existingTime) {
-          map.set(r.id, r);
-        }
-      }
-    }
-  });
+  const seenMinuteKey = new Map();
 
-  // Return array sorted by timestamp descending (newest first)
-  return Array.from(map.values()).sort((a, b) => {
-    const tA = new Date(a.timestamp || 0).getTime();
-    const tB = new Date(b.timestamp || 0).getTime();
-    return tB - tA;
-  });
+  const all = [...(localReports || []), ...(remoteReports || [])];
+  
+  // Sort descending by timestamp first (newest scans always first)
+  all.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+
+  const result = [];
+  for (const r of all) {
+    if (!r || !r.id) continue;
+    if (map.has(r.id)) continue;
+
+    // Prune identical duplicate spam created in loops
+    const minuteKey = `${r.farmerName}_${r.batchNumber}_${(r.timestamp || '').slice(0, 16)}`;
+    if (seenMinuteKey.has(minuteKey)) continue;
+
+    map.set(r.id, r);
+    seenMinuteKey.set(minuteKey, r.id);
+    result.push(r);
+  }
+
+  return result;
 }
+
+let isSyncingActive = false;
 
 /**
  * Perform Bidirectional Sync between Local Storage and Cloud Backend
  */
 export async function syncWithCloud() {
+  if (isSyncingActive) return getLocalReports();
+
   if (!navigator.onLine) {
     updateStatus({ state: 'offline', error: 'No internet connection' });
     return getLocalReports();
   }
 
+  isSyncingActive = true;
   updateStatus({ state: 'syncing', error: null });
 
-  const localReports = getLocalReports();
-  let remoteReports = [];
-  let syncSuccess = false;
-
-  // 1. Try Vercel Serverless / Express API
   try {
-    const res = await fetch(`${API_BASE}/reports?limit=100`, {
-      headers: { 'Accept': 'application/json' }
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data.reports)) {
-        remoteReports = data.reports;
-        syncSuccess = true;
-      }
-    }
-  } catch (err) {
-    console.log("Local API sync offline or unavailable, continuing to external sync...");
-  }
+    const localReports = getLocalReports();
+    let remoteReports = [];
+    let syncSuccess = false;
 
-  // 2. Try Supabase if configured
-  if (supabaseClient) {
+    // 1. Try Vercel Serverless / Express API
     try {
-      const { data, error } = await supabaseClient
-        .from('reports')
-        .select('*')
-        .order('timestamp', { ascending: false })
-        .limit(100);
-
-      if (!error && Array.isArray(data)) {
-        remoteReports = [...remoteReports, ...data];
-        syncSuccess = true;
+      const res = await fetch(`${API_BASE}/reports?limit=100`, {
+        headers: { 'Accept': 'application/json' }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.reports)) {
+          remoteReports = data.reports;
+          syncSuccess = true;
+        }
       }
-    } catch (e) {
-      console.warn("Supabase sync error:", e);
+    } catch (err) {}
+
+    // 2. Try Supabase if configured
+    if (supabaseClient) {
+      try {
+        const { data, error } = await supabaseClient
+          .from('reports')
+          .select('*')
+          .order('timestamp', { ascending: false })
+          .limit(100);
+
+        if (!error && Array.isArray(data)) {
+          remoteReports = [...remoteReports, ...data];
+          syncSuccess = true;
+        }
+      } catch (e) {}
     }
-  }
 
-  // Merge local & remote reports
-  const merged = mergeReports(localReports, remoteReports);
+    // Merge local & remote reports
+    const merged = mergeReports(localReports, remoteReports);
 
-  // Write merged back to local storage
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-  } catch (e) {
-    console.warn("Error caching merged reports:", e);
-  }
+    // Write merged back to local storage
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+    } catch (e) {}
 
-  // Push local reports that were missing on remote
-  if (syncSuccess) {
-    const remoteIdSet = new Set(remoteReports.map(r => r.id));
-    const unsyncedLocals = localReports.filter(r => !remoteIdSet.has(r.id));
+    // Push local reports that were missing on remote (max 5 at a time)
+    if (syncSuccess) {
+      const remoteIdSet = new Set(remoteReports.map(r => r.id));
+      const unsyncedLocals = merged.filter(r => !remoteIdSet.has(r.id)).slice(0, 5);
 
-    if (unsyncedLocals.length > 0) {
-      // Push each unsynced report to server
       for (const report of unsyncedLocals) {
         try {
           await fetch(`${API_BASE}/reports`, {
@@ -196,24 +189,25 @@ export async function syncWithCloud() {
           } catch (e) {}
         }
       }
+
+      updateStatus({
+        state: 'synced',
+        lastSyncTime: new Date().toISOString(),
+        pendingCount: 0,
+        error: null
+      });
+    } else {
+      updateStatus({
+        state: 'offline',
+        lastSyncTime: currentStatus.lastSyncTime || null,
+        error: 'Saved locally on device (Cloud unreachable)'
+      });
     }
 
-    updateStatus({
-      state: 'synced',
-      lastSyncTime: new Date().toISOString(),
-      pendingCount: 0,
-      error: null
-    });
-  } else {
-    // If backend was unreachable but local is fine
-    updateStatus({
-      state: 'offline',
-      lastSyncTime: currentStatus.lastSyncTime || null,
-      error: 'Saved locally on device (Cloud unreachable)'
-    });
+    return merged;
+  } finally {
+    isSyncingActive = false;
   }
-
-  return merged;
 }
 
 /**

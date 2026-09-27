@@ -10,13 +10,13 @@ const API_BASE = '/api';
 
 export const SHOWCASE_BOKARO_REPORTS = [
   {
-    id: "ASTRA-20260927-001",
+    id: "ASTRA-20260926-001",
     centreName: "Bokaro Krishi Mandi",
     centreCode: "BKR-JH-01",
     farmerName: "Rajesh Kumar Mahto (Chas, Bokaro)",
     farmerPhone: "9835123456",
     batchNumber: "JH-09-AB-4821 (60 Bags)",
-    timestamp: "2026-09-27T08:30:00.000Z",
+    timestamp: "2026-09-26T06:30:00.000Z",
     sampleCount: 5,
     gradeAPercent: 89.2,
     ursPercent: 10.8,
@@ -39,13 +39,13 @@ export const SHOWCASE_BOKARO_REPORTS = [
     ]
   },
   {
-    id: "ASTRA-20260927-002",
+    id: "ASTRA-20260926-002",
     centreName: "Bokaro Krishi Mandi",
     centreCode: "BKR-JH-01",
     farmerName: "Sunil Soren (Petarwar)",
     farmerPhone: "9835987654",
     batchNumber: "JH-09-E-3112 (40 Bags)",
-    timestamp: "2026-09-27T09:45:00.000Z",
+    timestamp: "2026-09-26T07:15:00.000Z",
     sampleCount: 5,
     gradeAPercent: 41.6,
     ursPercent: 58.4,
@@ -68,13 +68,13 @@ export const SHOWCASE_BOKARO_REPORTS = [
     ]
   },
   {
-    id: "ASTRA-20260927-003",
+    id: "ASTRA-20260926-003",
     centreName: "Bokaro Krishi Mandi",
     centreCode: "BKR-JH-01",
     farmerName: "Amit Kumar Singh (Bermo)",
     farmerPhone: "9835112233",
     batchNumber: "JH-10-C-7744 (75 Bags)",
-    timestamp: "2026-09-27T11:15:00.000Z",
+    timestamp: "2026-09-26T08:00:00.000Z",
     sampleCount: 5,
     gradeAPercent: 84.6,
     ursPercent: 15.4,
@@ -97,13 +97,13 @@ export const SHOWCASE_BOKARO_REPORTS = [
     ]
   },
   {
-    id: "ASTRA-20260927-004",
+    id: "ASTRA-20260926-004",
     centreName: "Bokaro Krishi Mandi",
     centreCode: "BKR-JH-01",
     farmerName: "Prakash Yadav (Chandankiyari)",
     farmerPhone: "9835445566",
     batchNumber: "JH-09-D-1456 (50 Bags)",
-    timestamp: "2026-09-27T13:00:00.000Z",
+    timestamp: "2026-09-26T08:45:00.000Z",
     sampleCount: 5,
     gradeAPercent: 35.8,
     ursPercent: 64.2,
@@ -126,13 +126,13 @@ export const SHOWCASE_BOKARO_REPORTS = [
     ]
   },
   {
-    id: "ASTRA-20260927-005",
+    id: "ASTRA-20260926-005",
     centreName: "Bokaro Krishi Mandi",
     centreCode: "BKR-JH-01",
     farmerName: "Manoj Mahato (Jaridih, Bokaro)",
     farmerPhone: "9835778899",
     batchNumber: "JH-09-F-9021 (45 Bags)",
-    timestamp: "2026-09-27T14:20:00.000Z",
+    timestamp: "2026-09-26T09:30:00.000Z",
     sampleCount: 5,
     gradeAPercent: 42.0,
     ursPercent: 58.0,
@@ -163,41 +163,85 @@ function getCleanLocalStorageReports() {
       localStorage.setItem('astragrade_reports', JSON.stringify(SHOWCASE_BOKARO_REPORTS));
       return SHOWCASE_BOKARO_REPORTS;
     }
-    const parsed = JSON.parse(raw);
-    // If reports contain stale Nashik references, refresh with Bokaro showcase
-    if (parsed.some(r => r?.centreName?.includes('Nashik') || r?.centreCode?.includes('NSK'))) {
+    let parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) {
       localStorage.setItem('astragrade_reports', JSON.stringify(SHOWCASE_BOKARO_REPORTS));
       return SHOWCASE_BOKARO_REPORTS;
     }
-    return parsed;
+
+    // Purge stale Nashik
+    if (parsed.some(r => r?.centreName?.includes('Nashik') || r?.centreCode?.includes('NSK'))) {
+      parsed = SHOWCASE_BOKARO_REPORTS;
+    }
+
+    // Smart deduplication: prune exact identical batches created in sync loops
+    const seenMinutes = new Set();
+    const seenIds = new Set();
+    const deduplicated = [];
+
+    for (const r of parsed) {
+      if (!r || !r.id) continue;
+      if (seenIds.has(r.id)) continue;
+
+      // Group by farmer + batch + minute (removes identical loop copies)
+      const minuteKey = `${r.farmerName}_${r.batchNumber}_${(r.timestamp || '').slice(0, 16)}`;
+      if (seenMinutes.has(minuteKey)) continue;
+
+      seenIds.add(r.id);
+      seenMinutes.add(minuteKey);
+      deduplicated.push(r);
+    }
+
+    // Sort descending by timestamp (newest scans ALWAYS on top)
+    deduplicated.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+
+    localStorage.setItem('astragrade_reports', JSON.stringify(deduplicated));
+    return deduplicated;
   } catch (e) {
     return SHOWCASE_BOKARO_REPORTS;
   }
 }
 
+export async function resetAllReportsToDefault() {
+  try {
+    localStorage.setItem('astragrade_reports', JSON.stringify(SHOWCASE_BOKARO_REPORTS));
+    await fetch(`${API_BASE}/reports/reset`, { method: 'POST' }).catch(() => {});
+  } catch (e) {}
+  return SHOWCASE_BOKARO_REPORTS;
+}
+
 export async function fetchReports(filters = {}) {
+  let list = getCleanLocalStorageReports();
+
   try {
     const params = new URLSearchParams();
     if (filters.centreCode) params.append('centreCode', filters.centreCode);
     if (filters.verdict) params.append('verdict', filters.verdict);
     if (filters.limit) params.append('limit', filters.limit);
 
-    const localList = getCleanLocalStorageReports();
-
     const res = await fetch(`${API_BASE}/reports?${params.toString()}`);
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data.reports) && data.reports.length > 0) {
         // Merge cloud reports with local reports
-        const merged = mergeReports(localList, data.reports);
-        localStorage.setItem('astragrade_reports', JSON.stringify(merged));
-        return merged;
+        list = mergeReports(list, data.reports);
+        localStorage.setItem('astragrade_reports', JSON.stringify(list));
       }
     }
-    return localList;
-  } catch (err) {
-    return getCleanLocalStorageReports();
+  } catch (err) {}
+
+  // Apply filters
+  let filtered = list;
+  if (filters.verdict && filters.verdict !== 'ALL') {
+    filtered = filtered.filter(r => r.verdict?.toLowerCase() === filters.verdict?.toLowerCase());
   }
+
+  // Strictly enforce limit if requested (e.g. limit: 5 on Dashboard!)
+  if (filters.limit) {
+    filtered = filtered.slice(0, Number(filters.limit));
+  }
+
+  return filtered;
 }
 
 export async function fetchReportById(id) {

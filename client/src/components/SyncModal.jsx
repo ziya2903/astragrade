@@ -23,6 +23,7 @@ import {
   importReportsJSON,
   getLocalReports 
 } from '../services/cloudSync';
+import { resetAllReportsToDefault } from '../services/api';
 
 export default function SyncModal({ isOpen, onClose, onSyncComplete }) {
   const [syncStatus, setSyncStatus] = useState({ state: 'idle', lastSyncTime: null });
@@ -85,6 +86,14 @@ export default function SyncModal({ isOpen, onClose, onSyncComplete }) {
       setConfigSaved(false);
       handleManualSync();
     }, 1500);
+  };
+
+  const handleResetTo5 = async () => {
+    if (window.confirm("Clean all duplicate batches and reset to the 5 official Bokaro showcase reports?")) {
+      const resetList = await resetAllReportsToDefault();
+      setLocalCount(resetList.length);
+      if (onSyncComplete) onSyncComplete();
+    }
   };
 
   const handleExport = () => {
@@ -176,15 +185,27 @@ export default function SyncModal({ isOpen, onClose, onSyncComplete }) {
               </div>
             </div>
 
-            {/* Instant Manual Sync Trigger */}
-            <button
-              onClick={handleManualSync}
-              disabled={isSyncing}
-              className="w-full py-3 bg-[#0d3b32] hover:bg-[#092c25] active:scale-98 text-white rounded-xl text-xs font-black flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer disabled:opacity-50 min-h-[44px]"
-            >
-              <RefreshCw className={`w-4 h-4 text-amber-300 ${isSyncing ? 'animate-spin' : ''}`} />
-              <span>{isSyncing ? 'Synchronizing Batches...' : 'Sync Now with Cloud'}</span>
-            </button>
+            {/* Instant Manual Sync Trigger + Clean Duplicates */}
+            <div className="flex gap-2">
+              <button
+                onClick={handleManualSync}
+                disabled={isSyncing}
+                className="flex-1 py-3 bg-[#0d3b32] hover:bg-[#092c25] active:scale-98 text-white rounded-xl text-xs font-black flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer disabled:opacity-50 min-h-[44px]"
+              >
+                <RefreshCw className={`w-4 h-4 text-amber-300 ${isSyncing ? 'animate-spin' : ''}`} />
+                <span>{isSyncing ? 'Syncing...' : 'Sync Now with Cloud'}</span>
+              </button>
+
+              {localCount > 5 && (
+                <button
+                  onClick={handleResetTo5}
+                  className="px-3.5 py-3 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-black transition-all cursor-pointer min-h-[44px]"
+                  title="Wipe duplicate spam and reset to 5 official batches"
+                >
+                  Clean to 5
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Cross-Device Demonstration Pill */}

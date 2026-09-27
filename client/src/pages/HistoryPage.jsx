@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchReports, deleteReport } from '../services/api';
+import { fetchReports, deleteReport, resetAllReportsToDefault } from '../services/api';
 import { generateReportPDF } from '../services/pdfGenerator';
 import { 
   History, 
@@ -13,7 +13,8 @@ import {
   MapPin, 
   FileText,
   ArrowUpDown,
-  Trash2
+  Trash2,
+  RotateCcw
 } from 'lucide-react';
 
 export default function HistoryPage({ onViewReport, setView }) {
@@ -68,6 +69,13 @@ export default function HistoryPage({ onViewReport, setView }) {
     }
   };
 
+  const handleResetReports = async () => {
+    if (window.confirm("Clean up all duplicate test reports and reset to the 5 official Bokaro showcase batches?")) {
+      const resetList = await resetAllReportsToDefault();
+      setReports(resetList);
+    }
+  };
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 sm:py-8 space-y-6 animate-fadeIn">
       
@@ -88,12 +96,25 @@ export default function HistoryPage({ onViewReport, setView }) {
           </p>
         </div>
 
-        <button
-          onClick={() => setView('scan')}
-          className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-extrabold shadow-sm transition-all cursor-pointer"
-        >
-          Scan New Batch
-        </button>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          {reports.length > 5 && (
+            <button
+              onClick={handleResetReports}
+              className="px-3.5 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border-2 border-rose-200 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 min-h-[44px]"
+              title="Clean duplicate test batches and reset to 5 demo reports"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Clean to 5 Batches</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => setView('scan')}
+            className="px-5 py-2.5 bg-[#0d3b32] hover:bg-[#092c25] text-white rounded-xl text-xs sm:text-sm font-black shadow-sm transition-all cursor-pointer min-h-[44px] flex-1 sm:flex-initial text-center"
+          >
+            Scan New Batch
+          </button>
+        </div>
       </div>
 
       {/* Search & Filter Bar */}
@@ -141,13 +162,13 @@ export default function HistoryPage({ onViewReport, setView }) {
       </div>
 
       {/* Reports Table / Card List */}
-      <div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden">
+      <div>
         {loading ? (
-          <div className="py-16 text-center text-stone-400 text-sm font-semibold">
+          <div className="py-16 text-center text-stone-400 text-sm font-semibold bg-white rounded-3xl border border-stone-200">
             Fetching verified reports from database...
           </div>
         ) : filteredReports.length === 0 ? (
-          <div className="py-16 text-center text-stone-500 space-y-3">
+          <div className="py-16 text-center text-stone-500 space-y-3 bg-white rounded-3xl border border-stone-200">
             <FileText className="w-10 h-10 mx-auto text-stone-300" />
             <p className="font-bold text-sm">No grading reports match your query.</p>
             <button
@@ -158,7 +179,7 @@ export default function HistoryPage({ onViewReport, setView }) {
             </button>
           </div>
         ) : (
-          <div className="divide-y divide-stone-100">
+          <div className="space-y-3.5 sm:space-y-0 sm:bg-white sm:rounded-3xl sm:border sm:border-stone-200 sm:shadow-sm sm:overflow-hidden sm:divide-y sm:divide-stone-100">
             {filteredReports.map((report) => {
               const isGradeA = report.verdict === 'Grade A';
 
@@ -166,11 +187,11 @@ export default function HistoryPage({ onViewReport, setView }) {
                 <div
                   key={report.id}
                   onClick={() => onViewReport(report)}
-                  className="p-4 sm:p-5 hover:bg-stone-50/80 transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-4 cursor-pointer group"
+                  className="bg-white rounded-2xl p-4 sm:p-5 border-2 border-stone-200 sm:border-0 sm:rounded-none shadow-xs sm:shadow-none hover:border-[#0d3b32] sm:hover:bg-stone-50/80 transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-3 sm:gap-4 cursor-pointer group"
                 >
                   {/* Left: Info */}
-                  <div className="flex items-start gap-4">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 mt-0.5 ${
+                  <div className="flex items-start gap-3 sm:gap-4 w-full md:w-auto">
+                    <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shrink-0 mt-0.5 ${
                       isGradeA ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
                     }`}>
                       {isGradeA ? (
@@ -180,33 +201,35 @@ export default function HistoryPage({ onViewReport, setView }) {
                       )}
                     </div>
 
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-bold text-stone-900 bg-stone-100 px-2 py-0.5 rounded-md">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                        <span className="font-mono text-[11px] sm:text-xs font-bold text-stone-900 bg-stone-100 px-2 py-0.5 rounded-md">
                           {report.id}
                         </span>
                         <span className="text-xs text-stone-400">•</span>
-                        <span className="font-mono text-xs font-semibold text-stone-600">
+                        <span className="font-mono text-[11px] sm:text-xs font-semibold text-stone-600 truncate">
                           {report.batchNumber || "LOT-01"}
                         </span>
                       </div>
 
-                      <h4 className="text-base font-extrabold text-stone-900 group-hover:text-emerald-700 transition-colors mt-1">
+                      <h4 className="text-base sm:text-lg font-black text-stone-950 group-hover:text-emerald-700 transition-colors mt-1 truncate">
                         {report.farmerName || "Grower"}
                       </h4>
 
-                      <div className="flex flex-wrap items-center gap-3 text-xs text-stone-500 mt-1">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-stone-500 mt-1">
                         <span className="flex items-center gap-1">
-                          <MapPin className="w-3.5 h-3.5 text-stone-400" />
-                          {report.centreName}
+                          <MapPin className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                          <span>{report.centreName}</span>
                         </span>
                         <span>•</span>
                         <span className="flex items-center gap-1">
-                          <Calendar className="w-3.5 h-3.5 text-stone-400" />
-                          {new Date(report.timestamp).toLocaleString(undefined, {
-                            dateStyle: 'medium',
-                            timeStyle: 'short'
-                          })}
+                          <Calendar className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                          <span>
+                            {new Date(report.timestamp).toLocaleString(undefined, {
+                              dateStyle: 'medium',
+                              timeStyle: 'short'
+                            })}
+                          </span>
                         </span>
                         <span>•</span>
                         <span>{report.sampleCount || 1} sample(s)</span>
@@ -215,15 +238,13 @@ export default function HistoryPage({ onViewReport, setView }) {
                   </div>
 
                   {/* Right: Scores & Actions */}
-                  <div className="flex items-center justify-between md:justify-end w-full md:w-auto gap-5 pt-3 md:pt-0 border-t md:border-t-0 border-stone-100">
+                  <div className="flex items-center justify-between w-full md:w-auto gap-4 pt-3 sm:pt-0 border-t border-stone-100 sm:border-t-0">
                     <div className="text-left md:text-right">
-                      <div className="flex items-center gap-2 md:justify-end">
-                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider ${
-                          isGradeA ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-                        }`}>
-                          {report.verdict}
-                        </span>
-                      </div>
+                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider ${
+                        isGradeA ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                      }`}>
+                        {report.verdict}
+                      </span>
                       <div className="text-xs font-bold text-stone-700 mt-1">
                         Grade A: <span className="text-emerald-700 font-black">{report.gradeAPercent}%</span>
                         <span className="text-stone-300 mx-1">|</span>
@@ -231,18 +252,18 @@ export default function HistoryPage({ onViewReport, setView }) {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                       <button
                         onClick={(e) => handleDownload(e, report)}
                         title="Download PDF Certificate"
-                        className="p-2.5 bg-stone-100 hover:bg-emerald-600 hover:text-white text-stone-700 rounded-xl transition-all cursor-pointer shadow-2xs"
+                        className="p-2.5 bg-stone-100 hover:bg-emerald-600 hover:text-white text-stone-700 rounded-xl transition-all cursor-pointer shadow-2xs min-h-[40px] min-w-[40px] flex items-center justify-center"
                       >
                         <Download className="w-4 h-4" />
                       </button>
 
                       <button
                         onClick={() => onViewReport(report)}
-                        className="px-3 py-2 bg-stone-900 hover:bg-black text-white text-xs font-extrabold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
+                        className="px-3.5 py-2 bg-stone-900 hover:bg-black text-white text-xs font-black rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer min-h-[40px]"
                       >
                         <Eye className="w-3.5 h-3.5" />
                         <span>View</span>
@@ -251,7 +272,7 @@ export default function HistoryPage({ onViewReport, setView }) {
                       <button
                         onClick={(e) => handleDeleteReport(e, report)}
                         title="Delete Report"
-                        className="p-2.5 bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-600 rounded-xl transition-all cursor-pointer shadow-2xs"
+                        className="p-2.5 bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-600 rounded-xl transition-all cursor-pointer shadow-2xs min-h-[40px] min-w-[40px] flex items-center justify-center"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
