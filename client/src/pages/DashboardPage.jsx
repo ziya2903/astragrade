@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { fetchReports } from '../services/api';
+import { generateReportPDF } from '../services/pdfGenerator';
 import { 
   ScanLine, 
   History, 
@@ -12,7 +13,10 @@ import {
   TrendingUp, 
   Camera, 
   Calendar,
-  Sparkles
+  Sparkles,
+  Printer,
+  Layers,
+  ArrowRight
 } from 'lucide-react';
 
 export default function DashboardPage({ setView, onViewReport }) {
@@ -39,80 +43,142 @@ export default function DashboardPage({ setView, onViewReport }) {
   const gradeAPercent = totalScans > 0 ? Math.round((gradeACount / totalScans) * 100) : 0;
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 sm:py-8 space-y-6 sm:space-y-8 animate-fadeIn">
+    <div className="max-w-5xl mx-auto px-4 py-6 sm:py-8 space-y-6 sm:space-y-8 animate-fadeIn">
       
-      {/* Centre Status Header (High Outdoor Contrast) */}
-      <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border-2 border-stone-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 border border-emerald-300">
-            <MapPin className="w-6 h-6" />
+      {/* Mandi Gate Desk Banner (Warm Harvest & Pine Palette) */}
+      <div className="bg-gradient-to-r from-[#0d3b32] to-[#12493e] text-white rounded-3xl p-6 sm:p-7 shadow-lg border-2 border-[#165a4c] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-amber-400 text-stone-950 flex items-center justify-center shrink-0 shadow-md font-black text-2xl">
+            🧅
           </div>
           <div>
-            <span className="text-[11px] font-black uppercase tracking-wider text-emerald-900 bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-300">
-              Active Procurement Gate
-            </span>
-            <h2 className="text-xl sm:text-2xl font-black text-stone-950 mt-1">
-              {activeCentre?.name || "Nashik APMC Main Yard"}
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className="text-[11px] font-black uppercase tracking-wider text-amber-300">
+                Gate Inspection Terminal • Ready
+              </span>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-white mt-0.5">
+              {activeCentre?.name}
             </h2>
-            <p className="text-xs text-stone-700 font-bold">
-              Operator: <span className="text-black">{user?.farmerName || user?.name || "Gate Officer"}</span> • {user?.phone || 'N/A'}
+            <p className="text-xs text-emerald-100 font-bold mt-0.5">
+              Officer On Duty: <strong className="text-white">{user?.name}</strong> • Immediate lot evaluation
             </p>
           </div>
         </div>
 
-        <div className="hidden sm:flex items-center gap-3 bg-stone-100 px-4 py-2.5 rounded-2xl border-2 border-stone-300">
-          <TrendingUp className="w-5 h-5 text-emerald-700" />
+        {/* Quick Rate Metric Box */}
+        <div className="flex items-center gap-3 bg-[#082923] px-4 py-3 rounded-2xl border border-emerald-500/30">
+          <TrendingUp className="w-5 h-5 text-amber-400" />
           <div className="text-right">
-            <span className="text-xs font-black text-stone-700 block">{t.gradeARate}</span>
-            <span className="text-xl font-black text-emerald-900 font-mono">{gradeAPercent}%</span>
+            <span className="text-[10px] font-black uppercase text-emerald-200 block">{t.gradeARate}</span>
+            <span className="text-xl font-black text-amber-300 font-mono">{gradeAPercent}%</span>
           </div>
         </div>
       </div>
 
-      {/* CORE ACTION: ONE GIANT BUTTON FOR QUICK SCAN */}
-      <div className="relative group">
-        <button
-          onClick={() => setView('scan')}
-          className="relative w-full bg-emerald-700 hover:bg-emerald-800 active:scale-99 text-white rounded-3xl p-6 sm:p-10 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-6 transition-all text-left cursor-pointer border-3 border-emerald-500 min-h-[140px]"
-          aria-label="Scan Onions and Check Quality"
-        >
-          <div className="flex items-center gap-5 sm:gap-6">
-            <div className="w-18 h-18 sm:w-22 sm:h-22 rounded-3xl bg-white/20 flex items-center justify-center text-white shrink-0 group-hover:scale-105 transition-transform">
-              <Camera className="w-10 h-10 sm:w-12 sm:h-12" />
-            </div>
-            <div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 text-white text-xs font-black tracking-wide uppercase mb-2">
-                <Sparkles className="w-3.5 h-3.5 text-emerald-200" />
-                Continuous Burst Mode Active
+      {/* CORE ACTION CARDS (Friendly, tactile, instant access) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        
+        {/* Main Card: Instant 5-Shot Burst Scan */}
+        <div className="md:col-span-2 relative group">
+          <button
+            onClick={() => setView('scan')}
+            className="w-full h-full bg-gradient-to-br from-[#0d3b32] via-[#10483d] to-[#145649] hover:from-[#0a312a] hover:to-[#0f443a] text-white rounded-3xl p-6 sm:p-8 shadow-xl flex flex-col justify-between transition-all text-left cursor-pointer border-3 border-amber-400/60 min-h-[220px]"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-2xl bg-amber-400 text-stone-950 flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform">
+                  <Camera className="w-9 h-9" />
+                </div>
+                <div>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/20 text-amber-300 text-xs font-black uppercase tracking-wider mb-1 border border-amber-400/40">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Zero Wait • Sub-10s Burst
+                  </span>
+                  <h3 className="text-2xl sm:text-3xl font-black text-white">
+                    {t.scanOnionsBtn}
+                  </h3>
+                  <p className="text-emerald-100 text-xs sm:text-sm mt-1 font-bold max-w-md">
+                    Point camera at farmer's tray $\to$ snap 5 photos $\to$ instant Grade A vs URS calculation.
+                  </p>
+                </div>
               </div>
-              <h3 className="text-2xl sm:text-4xl font-black tracking-tight text-white drop-shadow-xs">
-                {t.scanOnionsBtn}
-              </h3>
-              <p className="text-emerald-100 text-xs sm:text-sm mt-1 font-bold max-w-md">
-                {t.scanSubtitle}
+            </div>
+
+            <div className="mt-6 flex items-center justify-between pt-4 border-t border-emerald-600/40">
+              <span className="text-xs text-amber-200 font-bold">
+                Mandi Gate Speed: 25 seconds per trolley
+              </span>
+              <div className="px-5 py-2.5 bg-amber-400 text-stone-950 font-black rounded-xl text-xs sm:text-sm flex items-center gap-2 shadow-md group-hover:bg-amber-300">
+                <span>{t.startScan}</span>
+                <ChevronRight className="w-4 h-4" />
+              </div>
+            </div>
+          </button>
+        </div>
+
+        {/* Secondary Card: Demo / Past Audits */}
+        <div className="flex flex-col gap-4">
+          <button
+            onClick={() => setView('scan')}
+            className="flex-1 bg-white hover:bg-stone-50 text-stone-900 rounded-3xl p-5 border-2 border-[#e6dfd1] shadow-md flex flex-col justify-between transition-all text-left cursor-pointer"
+          >
+            <div>
+              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center mb-2 font-black">
+                <Sparkles className="w-5 h-5 text-amber-700" />
+              </div>
+              <h4 className="text-base font-black text-stone-900">
+                Demo Onion Specimens
+              </h4>
+              <p className="text-xs text-stone-600 font-bold mt-1">
+                Load 5-sample mixed lot to demo without physical onions.
               </p>
             </div>
-          </div>
+            <div className="mt-3 flex items-center gap-1.5 text-xs font-black text-amber-700">
+              <span>Open Presets</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </div>
+          </button>
 
-          <div className="w-full sm:w-auto px-8 py-4 bg-white text-emerald-900 font-black rounded-2xl text-base sm:text-lg flex items-center justify-center gap-3 shadow-lg group-hover:bg-emerald-50 shrink-0 min-h-[56px]">
-            <span>{t.startScan}</span>
-            <ChevronRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
-          </div>
-        </button>
+          <button
+            onClick={() => setView('history')}
+            className="flex-1 bg-white hover:bg-stone-50 text-stone-900 rounded-3xl p-5 border-2 border-[#e6dfd1] shadow-md flex flex-col justify-between transition-all text-left cursor-pointer"
+          >
+            <div>
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center mb-2 font-black">
+                <History className="w-5 h-5 text-emerald-700" />
+              </div>
+              <h4 className="text-base font-black text-stone-900">
+                Print Past Slips
+              </h4>
+              <p className="text-xs text-stone-600 font-bold mt-1">
+                Search previous batches by farmer name or token ID.
+              </p>
+            </div>
+            <div className="mt-3 flex items-center gap-1.5 text-xs font-black text-emerald-800">
+              <span>View History</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </div>
+          </button>
+        </div>
+
       </div>
 
-      {/* RECENT SCAN HISTORY */}
-      <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border-2 border-stone-300 space-y-4">
+      {/* RECENT MANDI SLIPS (FEED) */}
+      <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-md border-2 border-[#e6dfd1] space-y-4">
         <div className="flex items-center justify-between pb-3 border-b-2 border-stone-200">
           <div className="flex items-center gap-2.5">
-            <History className="w-5 h-5 text-emerald-700" />
+            <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center font-black">
+              <History className="w-4 h-4" />
+            </div>
             <h3 className="text-lg font-black text-stone-950">
               {t.recentScans} (Last 5)
             </h3>
           </div>
           <button
             onClick={() => setView('history')}
-            className="text-xs font-black text-emerald-800 hover:text-emerald-950 hover:underline flex items-center gap-1 p-2 min-h-[44px]"
+            className="text-xs font-black text-emerald-800 hover:text-emerald-950 hover:underline flex items-center gap-1 p-2"
           >
             <span>{t.viewAll}</span>
             <ChevronRight className="w-4 h-4" />
@@ -129,9 +195,9 @@ export default function DashboardPage({ setView, onViewReport }) {
             <p className="font-bold text-sm">No quality scans recorded yet.</p>
             <button
               onClick={() => setView('scan')}
-              className="px-5 py-2.5 bg-emerald-700 text-white rounded-xl text-xs font-black"
+              className="px-5 py-2.5 bg-[#0d3b32] text-white rounded-xl text-xs font-black"
             >
-              Scan Your First Onion Batch
+              Scan First Trolley
             </button>
           </div>
         ) : (
@@ -142,7 +208,7 @@ export default function DashboardPage({ setView, onViewReport }) {
                 <div
                   key={report.id}
                   onClick={() => onViewReport(report)}
-                  className="group p-4 rounded-2xl border-2 border-stone-300 hover:border-emerald-700 hover:shadow-md transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 cursor-pointer bg-stone-50 hover:bg-white"
+                  className="group p-4 rounded-2xl border-2 border-stone-300 hover:border-emerald-700 hover:shadow-md transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 cursor-pointer bg-[#fcfbf9] hover:bg-white"
                 >
                   <div className="flex items-center gap-3.5">
                     <div className={`w-11 h-11 rounded-xl flex items-center justify-center font-black text-sm shrink-0 border ${
@@ -180,15 +246,13 @@ export default function DashboardPage({ setView, onViewReport }) {
 
                   <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-4 pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-200">
                     <div className="text-left sm:text-right">
-                      <div className="flex items-center gap-2 sm:justify-end">
-                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider ${
-                          isGradeA ? 'bg-emerald-200 text-emerald-950' : 'bg-rose-200 text-rose-950'
-                        }`}>
-                          {report.verdict}
-                        </span>
-                      </div>
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider ${
+                        isGradeA ? 'bg-emerald-200 text-emerald-950' : 'bg-rose-200 text-rose-950'
+                      }`}>
+                        {report.verdict}
+                      </span>
                       <div className="text-xs font-bold text-stone-800 mt-1">
-                        Grade A: <span className="text-emerald-800 font-black">{report.gradeAPercent}%</span> | URS: <span className="text-rose-800 font-black">{report.ursPercent}%</span>
+                        Grade A: <span className="text-emerald-800 font-black font-mono">{report.gradeAPercent}%</span> | URS: <span className="text-rose-800 font-black font-mono">{report.ursPercent}%</span>
                       </div>
                     </div>
 

@@ -26,7 +26,7 @@ export default function ReportViewPage({ report, setView, onNewScan }) {
         <p className="text-stone-700 font-bold">No report selected.</p>
         <button
           onClick={() => setView('dashboard')}
-          className="px-5 py-2.5 bg-emerald-700 text-white rounded-xl text-sm font-bold"
+          className="px-5 py-2.5 bg-[#0d3b32] text-white rounded-xl text-sm font-bold"
         >
           Return to Dashboard
         </button>
@@ -80,11 +80,11 @@ Date: ${new Date(report.timestamp).toLocaleString()}`;
         </button>
 
         {/* View Mode Toggle: Official Certificate vs Thermal Mandi Slip */}
-        <div className="flex items-center bg-stone-100 p-1 rounded-xl border-2 border-stone-300 text-xs font-black">
+        <div className="flex items-center bg-stone-200 p-1 rounded-xl border border-stone-300 text-xs font-black">
           <button
             onClick={() => setViewMode('certificate')}
             className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-              viewMode === 'certificate' ? 'bg-emerald-700 text-white shadow-xs' : 'text-stone-700 hover:text-black'
+              viewMode === 'certificate' ? 'bg-[#0d3b32] text-white shadow-xs' : 'text-stone-700 hover:text-black'
             }`}
           >
             Digital Certificate
@@ -92,7 +92,7 @@ Date: ${new Date(report.timestamp).toLocaleString()}`;
           <button
             onClick={() => setViewMode('thermal')}
             className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-              viewMode === 'thermal' ? 'bg-emerald-700 text-white shadow-xs' : 'text-stone-700 hover:text-black'
+              viewMode === 'thermal' ? 'bg-amber-600 text-white shadow-xs' : 'text-stone-700 hover:text-black'
             }`}
           >
             Thermal Slip (80mm)
@@ -103,7 +103,7 @@ Date: ${new Date(report.timestamp).toLocaleString()}`;
           {viewMode === 'thermal' ? (
             <button
               onClick={handlePrintThermal}
-              className="px-5 py-2.5 rounded-xl bg-stone-900 hover:bg-black text-white text-xs sm:text-sm font-black flex items-center gap-2 shadow-md transition-all cursor-pointer min-h-[44px]"
+              className="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs sm:text-sm font-black flex items-center gap-2 shadow-md transition-all cursor-pointer min-h-[44px]"
             >
               <Printer className="w-4 h-4" />
               <span>Print Slip</span>
@@ -112,9 +112,9 @@ Date: ${new Date(report.timestamp).toLocaleString()}`;
             <button
               onClick={handleDownloadPDF}
               disabled={downloading}
-              className="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs sm:text-sm font-black flex items-center gap-2 shadow-md transition-all cursor-pointer min-h-[44px]"
+              className="px-5 py-2.5 rounded-xl bg-[#0d3b32] hover:bg-[#092c25] text-white text-xs sm:text-sm font-black flex items-center gap-2 shadow-md transition-all cursor-pointer min-h-[44px]"
             >
-              <Download className="w-4 h-4" />
+              <Download className="w-4 h-4 text-amber-300" />
               <span>{downloading ? 'Preparing PDF...' : t.downloadPdf}</span>
             </button>
           )}
@@ -131,7 +131,7 @@ Date: ${new Date(report.timestamp).toLocaleString()}`;
 
       {/* 80mm MANDI THERMAL SLIP VIEW */}
       {viewMode === 'thermal' && (
-        <div className="max-w-sm mx-auto bg-white p-6 rounded-2xl border-2 border-stone-400 font-mono text-xs shadow-lg space-y-3 print:border-none print:shadow-none print:p-0">
+        <div className="max-w-sm mx-auto bg-white p-6 rounded-2xl border-2 border-stone-400 font-mono text-xs shadow-xl space-y-3 print:border-none print:shadow-none print:p-0">
           <div className="text-center pb-2 border-b-2 border-dashed border-stone-400">
             <h3 className="text-lg font-black uppercase tracking-tight">ASTRA GRADE</h3>
             <p className="text-[10px] text-stone-600">APMC QUALITY ASSESSMENT SLIP</p>
@@ -202,15 +202,15 @@ Date: ${new Date(report.timestamp).toLocaleString()}`;
 
       {/* FULL DIGITAL CERTIFICATE VIEW */}
       {viewMode === 'certificate' && (
-        <div className="bg-white rounded-3xl border-3 border-stone-300 shadow-xl overflow-hidden">
+        <div className="bg-white rounded-3xl border-3 border-[#e6dfd1] shadow-xl overflow-hidden">
           
           {/* Header Ribbon */}
-          <div className="bg-emerald-800 text-white p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="bg-[#0d3b32] text-white p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-2xl">🧅</span>
                 <span className="text-2xl font-black tracking-tight">AstraGrade</span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-black bg-white/20 uppercase tracking-widest text-emerald-100 border border-white/20">
+                <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-400 text-stone-950 uppercase tracking-widest">
                   Official Mandi Certificate
                 </span>
               </div>
@@ -220,7 +220,7 @@ Date: ${new Date(report.timestamp).toLocaleString()}`;
             </div>
 
             <div className="text-left sm:text-right bg-black/20 px-4 py-2.5 rounded-2xl border border-white/20">
-              <span className="text-[10px] font-black uppercase tracking-widest text-emerald-200 block">
+              <span className="text-[10px] font-black uppercase tracking-widest text-amber-300 block">
                 Certificate ID
               </span>
               <span className="text-sm sm:text-base font-mono font-black text-white">
@@ -230,9 +230,9 @@ Date: ${new Date(report.timestamp).toLocaleString()}`;
           </div>
 
           {/* Metadata Grid */}
-          <div className="p-6 bg-stone-100 border-b-2 border-stone-300 grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+          <div className="p-6 bg-stone-50 border-b-2 border-stone-200 grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
             <div>
-              <span className="font-black text-stone-600 uppercase tracking-wider block text-[10px]">
+              <span className="font-black text-stone-500 uppercase tracking-wider block text-[10px]">
                 Procurement Centre
               </span>
               <span className="font-black text-stone-950 text-sm mt-0.5 block">
@@ -241,33 +241,33 @@ Date: ${new Date(report.timestamp).toLocaleString()}`;
             </div>
 
             <div>
-              <span className="font-black text-stone-600 uppercase tracking-wider block text-[10px]">
+              <span className="font-black text-stone-500 uppercase tracking-wider block text-[10px]">
                 Farmer / Lot Owner
               </span>
               <span className="font-black text-stone-950 text-sm mt-0.5 block">
                 {report.farmerName}
               </span>
-              <span className="text-[11px] text-stone-600 font-mono">Ph: {report.farmerPhone || "N/A"}</span>
+              <span className="text-[11px] text-stone-500 font-mono">Ph: {report.farmerPhone || "N/A"}</span>
             </div>
 
             <div>
-              <span className="font-black text-stone-600 uppercase tracking-wider block text-[10px]">
+              <span className="font-black text-stone-500 uppercase tracking-wider block text-[10px]">
                 Batch / Token #
               </span>
               <span className="font-black text-stone-950 text-sm mt-0.5 block font-mono">
                 {report.batchNumber}
               </span>
-              <span className="text-[11px] text-stone-600 font-bold">{report.sampleCount} Samples</span>
+              <span className="text-[11px] text-stone-500 font-bold">{report.sampleCount} Samples</span>
             </div>
 
             <div>
-              <span className="font-black text-stone-600 uppercase tracking-wider block text-[10px]">
+              <span className="font-black text-stone-500 uppercase tracking-wider block text-[10px]">
                 Timestamp
               </span>
               <span className="font-black text-stone-950 text-sm mt-0.5 block">
                 {new Date(report.timestamp).toLocaleDateString()}
               </span>
-              <span className="text-[11px] text-stone-600 font-mono">
+              <span className="text-[11px] text-stone-500 font-mono">
                 {new Date(report.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
             </div>
@@ -282,10 +282,10 @@ Date: ${new Date(report.timestamp).toLocaleString()}`;
             }`}>
               <div className="flex items-center gap-4 text-center sm:text-left">
                 <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 ${
-                  isGradeA ? 'bg-emerald-700 text-white' : 'bg-rose-700 text-white'
+                  isGradeA ? 'bg-[#0d3b32] text-white' : 'bg-[#e11d48] text-white'
                 }`}>
                   {isGradeA ? (
-                    <CheckCircle2 className="w-10 h-10" />
+                    <CheckCircle2 className="w-10 h-10 text-amber-300" />
                   ) : (
                     <AlertTriangle className="w-10 h-10" />
                   )}
@@ -309,7 +309,7 @@ Date: ${new Date(report.timestamp).toLocaleString()}`;
                   Grade A Confidence
                 </span>
                 <span className={`text-4xl font-black tracking-tight font-mono ${
-                  isGradeA ? 'text-emerald-800' : 'text-rose-800'
+                  isGradeA ? 'text-[#0d3b32]' : 'text-rose-700'
                 }`}>
                   {report.gradeAPercent}%
                 </span>
@@ -319,11 +319,11 @@ Date: ${new Date(report.timestamp).toLocaleString()}`;
               </div>
             </div>
 
-            {/* RETAINED PHOTO EVIDENCE (Fixes UF-04) */}
+            {/* RETAINED PHOTO EVIDENCE */}
             {report.sampleThumbnails && report.sampleThumbnails.length > 0 && (
-              <div className="mt-8 p-4 rounded-2xl bg-stone-50 border-2 border-stone-300">
+              <div className="mt-8 p-4 rounded-2xl bg-stone-50 border-2 border-stone-200">
                 <div className="flex items-center gap-2 mb-3">
-                  <ImageIcon className="w-4 h-4 text-emerald-700" />
+                  <ImageIcon className="w-4 h-4 text-[#0d3b32]" />
                   <h4 className="text-xs font-black uppercase tracking-wider text-stone-900">
                     Retained Visual Photo Evidence ({report.sampleThumbnails.length} photos)
                   </h4>
@@ -346,7 +346,7 @@ Date: ${new Date(report.timestamp).toLocaleString()}`;
 
               <div className="overflow-hidden border-2 border-stone-300 rounded-2xl">
                 <table className="w-full text-left text-xs sm:text-sm">
-                  <thead className="bg-stone-200 text-stone-900 font-black uppercase text-[10px]">
+                  <thead className="bg-[#f0ebe1] text-stone-900 font-black uppercase text-[10px]">
                     <tr>
                       <th className="p-3">Parameter</th>
                       <th className="p-3 text-right">Confidence</th>
@@ -356,20 +356,20 @@ Date: ${new Date(report.timestamp).toLocaleString()}`;
                   <tbody className="divide-y divide-stone-200 font-bold text-stone-900">
                     <tr className="bg-emerald-50">
                       <td className="p-3 flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-700"></span>
-                        {t.classes?.GradeA || "Grade A (Good Quality)"}
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#0d3b32]"></span>
+                        {t.classes?.GradeA || "Grade A (Prime Quality)"}
                       </td>
-                      <td className="p-3 text-right text-emerald-900 font-black font-mono">
+                      <td className="p-3 text-right text-[#0d3b32] font-black font-mono">
                         {report.gradeAPercent}%
                       </td>
                       <td className="p-3 text-right text-stone-600">&gt;= 60%</td>
                     </tr>
                     <tr>
                       <td className="p-3 flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-rose-700"></span>
-                        {t.classes?.Rotten || "Rotten (Decayed)"}
+                        <span className="w-2.5 h-2.5 rounded-full bg-rose-600"></span>
+                        {t.classes?.Rotten || "Rotten / Decayed"}
                       </td>
-                      <td className="p-3 text-right text-rose-900 font-black font-mono">
+                      <td className="p-3 text-right text-rose-800 font-black font-mono">
                         {report.breakdown?.rotten || 0}%
                       </td>
                       <td className="p-3 text-right text-stone-600">&lt;= 10%</td>
@@ -377,16 +377,16 @@ Date: ${new Date(report.timestamp).toLocaleString()}`;
                     <tr>
                       <td className="p-3 flex items-center gap-2">
                         <span className="w-2.5 h-2.5 rounded-full bg-amber-600"></span>
-                        {t.classes?.Sprouted || "Sprouted (Shoots)"}
+                        {t.classes?.Sprouted || "Sprouted / Shoots"}
                       </td>
-                      <td className="p-3 text-right text-amber-950 font-black font-mono">
+                      <td className="p-3 text-right text-amber-900 font-black font-mono">
                         {report.breakdown?.sprouted || 0}%
                       </td>
                       <td className="p-3 text-right text-stone-600">&lt;= 15%</td>
                     </tr>
                     <tr>
                       <td className="p-3 flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-indigo-700"></span>
+                        <span className="w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
                         {t.classes?.Undersized || "Undersized (< 45mm)"}
                       </td>
                       <td className="p-3 text-right text-indigo-950 font-black font-mono">
@@ -394,7 +394,7 @@ Date: ${new Date(report.timestamp).toLocaleString()}`;
                       </td>
                       <td className="p-3 text-right text-stone-600">&lt;= 15%</td>
                     </tr>
-                    <tr className="bg-stone-200 font-black">
+                    <tr className="bg-[#f0ebe1] font-black">
                       <td className="p-3">TOTAL URS DEFECT</td>
                       <td className="p-3 text-right text-rose-950 font-black font-mono">
                         {report.ursPercent}%
@@ -407,9 +407,9 @@ Date: ${new Date(report.timestamp).toLocaleString()}`;
             </div>
 
             {/* Legal Guarantee */}
-            <div className="mt-8 p-4 rounded-2xl bg-stone-100 border-2 border-stone-300 flex items-center justify-between gap-4">
+            <div className="mt-8 p-4 rounded-2xl bg-stone-100 border-2 border-stone-200 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <ShieldCheck className="w-8 h-8 text-emerald-700 shrink-0" />
+                <ShieldCheck className="w-8 h-8 text-[#0d3b32] shrink-0" />
                 <div>
                   <h5 className="text-xs font-black text-stone-900">
                     Transparent APMC Procurement Guarantee
@@ -430,9 +430,9 @@ Date: ${new Date(report.timestamp).toLocaleString()}`;
       <div className="flex justify-center pt-2">
         <button
           onClick={onNewScan}
-          className="px-8 py-4 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-base rounded-2xl shadow-lg flex items-center gap-3 cursor-pointer min-h-[56px]"
+          className="px-8 py-4 bg-[#0d3b32] hover:bg-[#082822] text-white font-black text-base rounded-2xl shadow-xl flex items-center gap-3 cursor-pointer min-h-[56px] border-2 border-amber-400/40"
         >
-          <ScanLine className="w-5 h-5" />
+          <ScanLine className="w-5 h-5 text-amber-300" />
           <span>{t.scanAnother}</span>
         </button>
       </div>

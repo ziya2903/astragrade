@@ -1,29 +1,45 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { verifyOtp as apiVerifyOtp, adminLogin as apiAdminLogin } from '../services/api';
 import { TRANSLATIONS } from '../services/translations';
 
 const AuthContext = createContext(null);
 
+export const MANDI_CENTRES = [
+  { id: "NSK-01", name: "Nashik APMC Main Yard", code: "NSK-01", state: "Maharashtra" },
+  { id: "LSG-03", name: "Lasalgaon Procurement Hub", code: "LSG-03", state: "Maharashtra" },
+  { id: "PMP-02", name: "Pimpalgaon Baswant Centre", code: "PMP-02", state: "Maharashtra" },
+  { id: "YLA-01", name: "Yeola Sub-Centre", code: "YLA-01", state: "Maharashtra" }
+];
+
 export function AuthProvider({ children }) {
+  // Mandi Gate Inspector is logged in by default — NO LOGIN BARRIER!
   const [user, setUser] = useState(() => {
     try {
-      const saved = localStorage.getItem('astragrade_user');
-      return saved ? JSON.parse(saved) : null;
+      const saved = localStorage.getItem('astragrade_inspector');
+      return saved ? JSON.parse(saved) : {
+        name: "Inspector S. D. Deshmukh",
+        role: "staff",
+        badge: "GATE-01",
+        phone: "9822012345"
+      };
     } catch {
-      return null;
+      return {
+        name: "Inspector S. D. Deshmukh",
+        role: "staff",
+        badge: "GATE-01",
+        phone: "9822012345"
+      };
     }
   });
 
   const [activeCentre, setActiveCentre] = useState(() => {
     try {
       const saved = localStorage.getItem('astragrade_centre');
-      return saved ? JSON.parse(saved) : { id: "NSK-01", name: "Nashik APMC Main Yard", code: "NSK-01" };
+      return saved ? JSON.parse(saved) : MANDI_CENTRES[0];
     } catch {
-      return { id: "NSK-01", name: "Nashik APMC Main Yard", code: "NSK-01" };
+      return MANDI_CENTRES[0];
     }
   });
 
-  // Language state: 'en' | 'mr' | 'hi'
   const [lang, setLang] = useState(() => {
     try {
       return localStorage.getItem('astragrade_lang') || 'en';
@@ -40,9 +56,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     if (user) {
-      localStorage.setItem('astragrade_user', JSON.stringify(user));
-    } else {
-      localStorage.removeItem('astragrade_user');
+      localStorage.setItem('astragrade_inspector', JSON.stringify(user));
     }
   }, [user]);
 
@@ -52,40 +66,14 @@ export function AuthProvider({ children }) {
     }
   }, [activeCentre]);
 
-  const loginWithPhone = async (phone, otp, centre, farmerName) => {
-    const res = await apiVerifyOtp(phone, otp, centre?.id, farmerName);
-    if (res.success) {
-      const loggedUser = {
-        ...res.user,
-        farmerName: farmerName || `Grower (${phone.slice(-4)})`,
-        phone,
-        role: 'staff'
-      };
-      setUser(loggedUser);
-      if (centre) setActiveCentre(centre);
-      return { success: true };
-    }
-    return { success: false, message: res.message || 'Authentication failed' };
-  };
-
-  const loginWithAdmin = async (email, password) => {
-    const res = await apiAdminLogin(email, password);
-    if (res.success) {
-      setUser(res.user);
-      return { success: true };
-    }
-    return { success: false, message: res.message || 'Invalid credentials' };
-  };
-
-  const logout = () => {
-    setUser(null);
+  const updateInspectorName = (name) => {
+    setUser(prev => ({ ...prev, name: name || "Gate Inspector" }));
   };
 
   const changeCentre = (centre) => {
     setActiveCentre(centre);
   };
 
-  // Translations shortcut
   const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
 
   return (
@@ -93,14 +81,11 @@ export function AuthProvider({ children }) {
       user,
       activeCentre,
       changeCentre,
-      loginWithPhone,
-      loginWithAdmin,
-      logout,
-      isAuthenticated: !!user,
-      isAdmin: user?.role === 'admin',
+      updateInspectorName,
       lang,
       setLang,
-      t
+      t,
+      centresList: MANDI_CENTRES
     }}>
       {children}
     </AuthContext.Provider>

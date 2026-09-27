@@ -3,21 +3,21 @@
 @layer base {
   body {
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background-color: #faf8f5;
+    background-color: #faf6f0;
     color: #1c1917;
     margin: 0;
     padding: 0;
   }
 }
 
-/* Custom agricultural animations & styles */
-@keyframes pulse-subtle {
+/* Warm produce animations */
+@keyframes pulse-warm {
   0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.85; transform: scale(1.02); }
+  50% { opacity: 0.9; transform: scale(1.02); }
 }
 
-.animate-pulse-subtle {
-  animation: pulse-subtle 2s infinite ease-in-out;
+.animate-pulse-warm {
+  animation: pulse-warm 2.5s infinite ease-in-out;
 }
 
 /* Custom scrollbars */
@@ -26,12 +26,12 @@
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #f5f5f4;
+  background: #f4eee2;
 }
 ::-webkit-scrollbar-thumb {
-  background: #d6d3d1;
+  background: #d8cebc;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #a8a29e;
+  background: #b8ac96;
 }
