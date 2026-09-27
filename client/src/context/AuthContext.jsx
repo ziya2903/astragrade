@@ -3,30 +3,28 @@ import { TRANSLATIONS } from '../services/translations';
 
 const AuthContext = createContext(null);
 
-export const MANDI_CENTRES = [
-  { id: "NSK-01", name: "Nashik APMC Main Yard", code: "NSK-01", state: "Maharashtra" },
-  { id: "LSG-03", name: "Lasalgaon Procurement Hub", code: "LSG-03", state: "Maharashtra" },
-  { id: "PMP-02", name: "Pimpalgaon Baswant Centre", code: "PMP-02", state: "Maharashtra" },
-  { id: "YLA-01", name: "Yeola Sub-Centre", code: "YLA-01", state: "Maharashtra" }
-];
+export const DEFAULT_MANDI = {
+  id: "BKR-JH-01",
+  name: "Bokaro Krishi Mandi",
+  code: "BKR-JH-01",
+  district: "Bokaro",
+  state: "Jharkhand"
+};
 
 export function AuthProvider({ children }) {
-  // Mandi Gate Inspector is logged in by default — NO LOGIN BARRIER!
   const [user, setUser] = useState(() => {
     try {
       const saved = localStorage.getItem('astragrade_inspector');
       return saved ? JSON.parse(saved) : {
-        name: "Inspector S. D. Deshmukh",
+        name: "Mandi Officer",
         role: "staff",
-        badge: "GATE-01",
-        phone: "9822012345"
+        badge: "GATE-01"
       };
     } catch {
       return {
-        name: "Inspector S. D. Deshmukh",
+        name: "Mandi Officer",
         role: "staff",
-        badge: "GATE-01",
-        phone: "9822012345"
+        badge: "GATE-01"
       };
     }
   });
@@ -34,15 +32,17 @@ export function AuthProvider({ children }) {
   const [activeCentre, setActiveCentre] = useState(() => {
     try {
       const saved = localStorage.getItem('astragrade_centre');
-      return saved ? JSON.parse(saved) : MANDI_CENTRES[0];
+      return saved ? JSON.parse(saved) : DEFAULT_MANDI;
     } catch {
-      return MANDI_CENTRES[0];
+      return DEFAULT_MANDI;
     }
   });
 
+  // Languages supported: 'en' | 'hi'
   const [lang, setLang] = useState(() => {
     try {
-      return localStorage.getItem('astragrade_lang') || 'en';
+      const saved = localStorage.getItem('astragrade_lang');
+      return (saved === 'hi' || saved === 'en') ? saved : 'en';
     } catch {
       return 'en';
     }
@@ -67,11 +67,7 @@ export function AuthProvider({ children }) {
   }, [activeCentre]);
 
   const updateInspectorName = (name) => {
-    setUser(prev => ({ ...prev, name: name || "Gate Inspector" }));
-  };
-
-  const changeCentre = (centre) => {
-    setActiveCentre(centre);
+    setUser(prev => ({ ...prev, name: name || "Mandi Officer" }));
   };
 
   const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
@@ -80,12 +76,10 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider value={{
       user,
       activeCentre,
-      changeCentre,
       updateInspectorName,
       lang,
       setLang,
-      t,
-      centresList: MANDI_CENTRES
+      t
     }}>
       {children}
     </AuthContext.Provider>

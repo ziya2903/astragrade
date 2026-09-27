@@ -13,8 +13,8 @@ export function generateReportPDF(report) {
 
   const pageWidth = doc.internal.pageSize.getWidth();
 
-  // Primary Header Banner
-  doc.setFillColor(21, 128, 61); // Emerald 700
+  // Primary Header Banner (Rich Pine #0d3b32)
+  doc.setFillColor(13, 59, 50);
   doc.rect(0, 0, pageWidth, 38, 'F');
 
   // Title & Subtitle
@@ -26,7 +26,7 @@ export function generateReportPDF(report) {
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   doc.text('AI-Powered Onion Quality Assessment & Grading Certificate', 16, 25);
-  doc.text('A KisanAstra Transparency Initiative | APMC Procurement Oversight', 16, 31);
+  doc.text('A KisanAstra Transparency Initiative | Mandi Procurement Desk', 16, 31);
 
   // Certificate / Report ID badge on top right
   doc.setFontSize(9);
@@ -43,9 +43,9 @@ export function generateReportPDF(report) {
   doc.setTextColor(55, 65, 81);
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
-  doc.text('PROCUREMENT CENTRE:', 20, 54);
+  doc.text('PROCUREMENT MANDI:', 20, 54);
   doc.setFont('helvetica', 'normal');
-  doc.text(`${report.centreName} (${report.centreCode || 'APMC-HQ'})`, 65, 54);
+  doc.text(`${report.centreName || 'Bokaro Krishi Mandi'} (${report.centreCode || 'BKR-JH-01'})`, 65, 54);
 
   doc.setFont('helvetica', 'bold');
   doc.text('FARMER / LOT HOLDER:', 20, 62);
@@ -60,23 +60,23 @@ export function generateReportPDF(report) {
   doc.setFont('helvetica', 'bold');
   doc.text('SAMPLES EVALUATED:', 20, 78);
   doc.setFont('helvetica', 'normal');
-  doc.text(`${report.sampleCount || 1} Onion Images (Multi-angle AI Scan)`, 65, 78);
+  doc.text(`${report.sampleCount || 1} Real Onion Images (AI Vision Scan)`, 65, 78);
 
   doc.setFont('helvetica', 'bold');
   doc.text('VERIFYING OFFICER:', 125, 78);
   doc.setFont('helvetica', 'normal');
-  doc.text(`${report.inspectorName || 'Govt. Mandi Inspector'}`, 160, 78);
+  doc.text(`${report.inspectorName || 'Mandi Quality Officer'}`, 160, 78);
 
   // Verdict Section
   const isGradeA = report.verdict === 'Grade A';
   const verdictBoxY = 96;
 
   if (isGradeA) {
-    doc.setFillColor(236, 253, 245); // Emerald 50
-    doc.setDrawColor(16, 185, 129);  // Emerald 500
+    doc.setFillColor(236, 253, 245);
+    doc.setDrawColor(16, 185, 129);
   } else {
-    doc.setFillColor(254, 242, 242); // Rose 50
-    doc.setDrawColor(239, 68, 68);   // Rose 500
+    doc.setFillColor(254, 242, 242);
+    doc.setDrawColor(239, 68, 68);
   }
 
   doc.setLineWidth(0.8);
@@ -156,7 +156,7 @@ export function generateReportPDF(report) {
     body: tableData,
     theme: 'grid',
     headStyles: {
-      fillColor: [21, 128, 61],
+      fillColor: [13, 59, 50],
       textColor: [255, 255, 255],
       fontStyle: 'bold',
       fontSize: 9
@@ -176,7 +176,7 @@ export function generateReportPDF(report) {
     }
   });
 
-  // Dispute Prevention & Legal Assurance Note
+  // Dispute Prevention Note
   const finalY = doc.lastAutoTable.finalY + 14;
   doc.setDrawColor(209, 213, 219);
   doc.setFillColor(243, 244, 246);
@@ -196,7 +196,7 @@ export function generateReportPDF(report) {
     finalY + 13
   );
 
-  // Digital Signatures & QR Code Simulation
+  // Digital Signatures
   const signY = finalY + 40;
 
   // Inspector Stamp Area
@@ -207,9 +207,9 @@ export function generateReportPDF(report) {
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(107, 114, 128);
-  doc.text('CENTRE IN-CHARGE SIGN / STAMP', 22, signY + 6);
+  doc.text('MANDI GATE IN-CHARGE SIGN', 22, signY + 6);
   doc.setFont('helvetica', 'normal');
-  doc.text('Digitally Verified at Procurement Gate', 22, signY + 18);
+  doc.text('Digitally Verified at Gate', 22, signY + 18);
 
   // Farmer Acceptance Area
   doc.roundedRect(pageWidth - 83, signY, 65, 24, 2, 2, 'D');
@@ -218,14 +218,13 @@ export function generateReportPDF(report) {
   doc.setTextColor(107, 114, 128);
   doc.text('FARMER ACKNOWLEDGEMENT', pageWidth - 79, signY + 6);
   doc.setFont('helvetica', 'normal');
-  doc.text('Grade & Tare Accepted Digitally', pageWidth - 79, signY + 18);
+  doc.text('Grade & Tare Accepted', pageWidth - 79, signY + 18);
 
   // Footer
   doc.setFontSize(7.5);
   doc.setTextColor(156, 163, 175);
   doc.text('AstraGrade v1.0 • Built with Google Teachable Machine & TensorFlow.js • KisanAstra AgriTech', pageWidth / 2, 288, { align: 'center' });
 
-  // Save the PDF
   const filename = `AstraGrade_Report_${report.id || 'Batch'}.pdf`;
   doc.save(filename);
   return filename;

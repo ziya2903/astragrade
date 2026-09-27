@@ -9,7 +9,6 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json({ limit: '15mb' }));
 
-// Ensure data directory exists
 const DATA_DIR = path.join(__dirname, 'data');
 const REPORTS_FILE = path.join(DATA_DIR, 'reports.json');
 
@@ -17,101 +16,78 @@ if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-// Initial seed data if file doesn't exist
+// Initial seed data for Bokaro Mandi, Jharkhand
 const INITIAL_REPORTS = [
   {
-    id: "ASTRA-20260926-001",
-    centreName: "Nashik APMC Main Yard",
-    centreCode: "NSK-01",
-    farmerName: "Rameshwar Patil",
-    farmerPhone: "9822012345",
-    batchNumber: "LOT-ON-9421",
-    timestamp: "2026-09-26T10:15:00.000Z",
-    sampleCount: 6,
-    gradeAPercent: 78.5,
-    ursPercent: 21.5,
+    id: "ASTRA-20260927-001",
+    centreName: "Bokaro Krishi Mandi",
+    centreCode: "BKR-JH-01",
+    farmerName: "Rajesh Mahto",
+    farmerPhone: "9835123456",
+    batchNumber: "LOT-JH-501",
+    timestamp: "2026-09-27T08:30:00.000Z",
+    sampleCount: 5,
+    gradeAPercent: 82.0,
+    ursPercent: 18.0,
     breakdown: {
-      gradeA: 78.5,
-      rotten: 4.2,
-      sprouted: 7.1,
-      undersized: 10.2
+      gradeA: 82.0,
+      rotten: 3.5,
+      sprouted: 5.5,
+      undersized: 9.0
     },
     dominantClass: "GradeA",
     verdict: "Grade A",
     verdictMessage: "This batch qualifies as Grade A. Approved for standard procurement price.",
-    inspectorName: "S. D. Deshmukh (Inspector #4)"
+    inspectorName: "Mandi Officer (Bokaro)"
   },
   {
-    id: "ASTRA-20260926-002",
-    centreName: "Lasalgaon Procurement Hub",
-    centreCode: "LSG-03",
-    farmerName: "Sunil Shinde",
-    farmerPhone: "9823198765",
-    batchNumber: "LOT-ON-9422",
-    timestamp: "2026-09-26T11:40:00.000Z",
-    sampleCount: 8,
-    gradeAPercent: 42.0,
-    ursPercent: 58.0,
-    breakdown: {
-      gradeA: 42.0,
-      rotten: 28.5,
-      sprouted: 18.0,
-      undersized: 11.5
-    },
-    dominantClass: "Rotten",
-    verdict: "URS",
-    verdictMessage: "This batch falls under URS category due to high rot percentage.",
-    inspectorName: "V. R. Kulkarni (Inspector #2)"
-  },
-  {
-    id: "ASTRA-20260926-003",
-    centreName: "Pimpalgaon Baswant Centre",
-    centreCode: "PMP-02",
-    farmerName: "Ganesh Gaikwad",
-    farmerPhone: "9821456789",
-    batchNumber: "LOT-ON-9423",
-    timestamp: "2026-09-26T13:20:00.000Z",
+    id: "ASTRA-20260927-002",
+    centreName: "Bokaro Krishi Mandi",
+    centreCode: "BKR-JH-01",
+    farmerName: "Sanjay Kumar",
+    farmerPhone: "9835987654",
+    batchNumber: "LOT-JH-502",
+    timestamp: "2026-09-27T09:45:00.000Z",
     sampleCount: 5,
-    gradeAPercent: 65.4,
-    ursPercent: 34.6,
+    gradeAPercent: 46.0,
+    ursPercent: 54.0,
     breakdown: {
-      gradeA: 65.4,
-      rotten: 8.2,
-      sprouted: 14.1,
-      undersized: 12.3
-    },
-    dominantClass: "GradeA",
-    verdict: "Grade A",
-    verdictMessage: "This batch qualifies as Grade A. Meets minimum procurement specifications.",
-    inspectorName: "A. P. Joshi (Inspector #1)"
-  },
-  {
-    id: "ASTRA-20260926-004",
-    centreName: "Yeola Sub-Centre",
-    centreCode: "YLA-01",
-    farmerName: "Bhagwan Wagh",
-    farmerPhone: "9822334455",
-    batchNumber: "LOT-ON-9424",
-    timestamp: "2026-09-26T15:05:00.000Z",
-    sampleCount: 7,
-    gradeAPercent: 31.8,
-    ursPercent: 68.2,
-    breakdown: {
-      gradeA: 31.8,
-      rotten: 12.4,
-      sprouted: 16.5,
-      undersized: 39.3
+      gradeA: 46.0,
+      rotten: 12.0,
+      sprouted: 14.0,
+      undersized: 28.0
     },
     dominantClass: "Undersized",
     verdict: "URS",
     verdictMessage: "This batch falls under URS category primarily due to undersized bulbs (< 45mm).",
-    inspectorName: "M. N. Khairnar (Inspector #3)"
+    inspectorName: "Mandi Officer (Bokaro)"
+  },
+  {
+    id: "ASTRA-20260927-003",
+    centreName: "Bokaro Krishi Mandi",
+    centreCode: "BKR-JH-01",
+    farmerName: "Amit Singh",
+    farmerPhone: "9835112233",
+    batchNumber: "LOT-JH-503",
+    timestamp: "2026-09-27T11:15:00.000Z",
+    sampleCount: 5,
+    gradeAPercent: 74.5,
+    ursPercent: 25.5,
+    breakdown: {
+      gradeA: 74.5,
+      rotten: 5.5,
+      sprouted: 8.0,
+      undersized: 12.0
+    },
+    dominantClass: "GradeA",
+    verdict: "Grade A",
+    verdictMessage: "This batch qualifies as Grade A. Approved for standard procurement price.",
+    inspectorName: "Mandi Officer (Bokaro)"
   }
 ];
 
-if (!fs.existsSync(REPORTS_FILE)) {
-  fs.writeFileSync(REPORTS_FILE, JSON.stringify(INITIAL_REPORTS, null, 2));
-}
+// Write or overwrite seed reports
+fs.writeFileSync(REPORTS_FILE, JSON.stringify(INITIAL_REPORTS, null, 2));
 
 function getStoredReports() {
   try {
@@ -123,7 +99,6 @@ function getStoredReports() {
   }
 }
 
-// Atomic file save (prevents corruption from concurrent writes)
 function saveStoredReports(reports) {
   const tmpFile = `${REPORTS_FILE}.tmp`;
   try {
@@ -134,77 +109,25 @@ function saveStoredReports(reports) {
   }
 }
 
-// Centres list
 const CENTRES = [
-  { id: "NSK-01", name: "Nashik APMC Main Yard", state: "Maharashtra", district: "Nashik" },
-  { id: "LSG-03", name: "Lasalgaon Procurement Hub", state: "Maharashtra", district: "Nashik" },
-  { id: "PMP-02", name: "Pimpalgaon Baswant Centre", state: "Maharashtra", district: "Nashik" },
-  { id: "YLA-01", name: "Yeola Sub-Centre", state: "Maharashtra", district: "Nashik" }
+  { id: "BKR-JH-01", name: "Bokaro Krishi Mandi", state: "Jharkhand", district: "Bokaro" },
+  { id: "RNC-JH-02", name: "Ranchi APMC Hub", state: "Jharkhand", district: "Ranchi" },
+  { id: "DHN-JH-03", name: "Dhanbad Agri Yard", state: "Jharkhand", district: "Dhanbad" }
 ];
 
-// Mock Auth: Request OTP
-app.post('/api/auth/send-otp', (req, res) => {
-  const { phone } = req.body;
-  if (!phone || phone.length < 10) {
-    return res.status(400).json({ success: false, message: 'Valid 10-digit mobile number required' });
-  }
-
-  const otp = '1234';
-  return res.json({
-    success: true,
-    message: 'OTP sent successfully',
-    demoOtp: otp,
-    note: 'In this demo mode, any 4 digits are accepted.'
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    app: 'AstraGrade API',
+    location: 'Bokaro, Jharkhand',
+    timestamp: new Date().toISOString()
   });
 });
 
-// Mock Auth: Verify OTP
-app.post('/api/auth/verify-otp', (req, res) => {
-  const { phone, otp, centreId, farmerName } = req.body;
-  if (!phone || !otp) {
-    return res.status(400).json({ success: false, message: 'Phone and OTP are required' });
-  }
-
-  if (otp.length === 4 && /^\d{4}$/.test(otp)) {
-    const centre = CENTRES.find(c => c.id === centreId) || CENTRES[0];
-    const user = {
-      phone,
-      name: farmerName || `Staff (${phone.slice(-4)})`,
-      role: 'staff',
-      centre: centre,
-      token: `demo-token-${Date.now()}`
-    };
-    return res.json({ success: true, user });
-  }
-
-  return res.status(401).json({ success: false, message: 'Invalid 4-digit OTP. Try 1234.' });
+app.get('/api/centres', (req, res) => {
+  res.json({ success: true, centres: CENTRES });
 });
 
-// Mock Auth: Admin Login
-app.post('/api/auth/admin-login', (req, res) => {
-  const { email, password } = req.body;
-  if (
-    (email === 'admin@kisanastra.gov.in' || email === 'admin@astragrade.org' || email === 'admin') &&
-    (password === 'admin123' || password === 'admin')
-  ) {
-    return res.json({
-      success: true,
-      user: {
-        email: email,
-        name: 'Ministry Quality Inspector / Central Admin',
-        role: 'admin',
-        token: `admin-token-${Date.now()}`
-      }
-    });
-  }
-
-  return res.status(401).json({
-    success: false,
-    message: 'Invalid credentials. Use admin@kisanastra.gov.in / admin123'
-  });
-});
-
-// GET all reports
 app.get('/api/reports', (req, res) => {
   const { centreCode, verdict, limit } = req.query;
   let reports = getStoredReports();
@@ -225,7 +148,6 @@ app.get('/api/reports', (req, res) => {
   res.json({ success: true, count: reports.length, reports });
 });
 
-// GET single report by ID
 app.get('/api/reports/:id', (req, res) => {
   const reports = getStoredReports();
   const report = reports.find(r => r.id === req.params.id);
@@ -235,7 +157,6 @@ app.get('/api/reports/:id', (req, res) => {
   res.json({ success: true, report });
 });
 
-// POST new quality report (with atomic write and retained thumbnails)
 app.post('/api/reports', (req, res) => {
   const {
     centreName,
@@ -266,11 +187,11 @@ app.post('/api/reports', (req, res) => {
 
   const newReport = {
     id: reportId,
-    centreName: centreName || "Nashik APMC Main Yard",
-    centreCode: centreCode || "NSK-01",
-    farmerName: farmerName || "Farmer Walk-in",
+    centreName: centreName || "Bokaro Krishi Mandi",
+    centreCode: centreCode || "BKR-JH-01",
+    farmerName: farmerName || "Farmer Lot",
     farmerPhone: farmerPhone || "N/A",
-    batchNumber: batchNumber || `LOT-ON-${Math.floor(1000 + Math.random() * 9000)}`,
+    batchNumber: batchNumber || `LOT-${Math.floor(100 + Math.random() * 900)}`,
     timestamp: new Date().toISOString(),
     sampleCount: sampleCount || 1,
     gradeAPercent: Number(Number(gradeAPercent).toFixed(1)),
@@ -286,7 +207,7 @@ app.post('/api/reports', (req, res) => {
     verdictMessage: verdictMessage || (gradeAPercent >= 60
       ? "This batch qualifies as Grade A. Approved for standard procurement price."
       : "This batch falls under URS category. Quality falls below standard Grade A baseline."),
-    inspectorName: inspectorName || "Authorized Centre Inspector",
+    inspectorName: inspectorName || "Mandi Officer (Bokaro)",
     sampleThumbnails: sampleThumbnails || [],
     imagesCount: sampleCount || 1
   };
@@ -297,7 +218,6 @@ app.post('/api/reports', (req, res) => {
   res.status(201).json({ success: true, report: newReport });
 });
 
-// GET Admin Dashboard Analytics
 app.get('/api/admin/stats', (req, res) => {
   const reports = getStoredReports();
   const totalBatches = reports.length;
@@ -316,7 +236,7 @@ app.get('/api/admin/stats', (req, res) => {
 
   const centreMap = {};
   reports.forEach(r => {
-    const cName = r.centreName || "Unknown Centre";
+    const cName = r.centreName || "Bokaro Krishi Mandi";
     if (!centreMap[cName]) {
       centreMap[cName] = { name: cName, count: 0, gradeASum: 0, ursCount: 0, gradeACount: 0 };
     }
@@ -354,4 +274,3 @@ if (!process.env.VERCEL) {
     console.log(`[AstraGrade Server] Running on http://localhost:${PORT}`);
   });
 }
-

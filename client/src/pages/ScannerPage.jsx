@@ -5,14 +5,12 @@ import { optimizeImage } from '../services/imageOptimizer';
 import { saveReport } from '../services/api';
 import CameraCapture from '../components/CameraCapture';
 import PredictionBars from '../components/PredictionBars';
-import SampleImagesModal from '../components/SampleImagesModal';
 import { 
   Camera, 
   Upload, 
   Plus, 
   Trash2, 
   FileCheck2, 
-  Sparkles, 
   Layers, 
   AlertCircle, 
   RotateCcw, 
@@ -33,15 +31,14 @@ export default function ScannerPage({ onReportGenerated, setView }) {
   // Batch Form Data (Auto-filled for rapid gate throughput)
   const [farmerName, setFarmerName] = useState('Farmer Lot');
   const [farmerPhone, setFarmerPhone] = useState('');
-  const [batchNumber, setBatchNumber] = useState(`TOKEN-${Math.floor(100 + Math.random() * 900)}`);
+  const [batchNumber, setBatchNumber] = useState(`LOT-${Math.floor(100 + Math.random() * 900)}`);
 
   // Scanned Samples: array of { id, imageSrc, prediction, timestamp }
   const [samples, setSamples] = useState([]);
   const [selectedSampleIndex, setSelectedSampleIndex] = useState(0);
 
-  // Modals & UI Toggles
+  // Camera & Saving states
   const [isCameraOpen, setIsCameraOpen] = useState(false);
-  const [isSampleModalOpen, setIsSampleModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   const fileInputRef = useRef(null);
@@ -70,7 +67,6 @@ export default function ScannerPage({ onReportGenerated, setView }) {
     return () => { isMounted = false; };
   }, []);
 
-  // Process image source
   const processImageSrc = async (imgSrc) => {
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -88,7 +84,6 @@ export default function ScannerPage({ onReportGenerated, setView }) {
     });
   };
 
-  // Add captured sample (downscaled)
   const handleAddSample = async (optimizedImgSrc) => {
     setIsProcessing(true);
     try {
@@ -111,7 +106,6 @@ export default function ScannerPage({ onReportGenerated, setView }) {
     }
   };
 
-  // Handle multi-image upload
   const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
@@ -156,27 +150,6 @@ export default function ScannerPage({ onReportGenerated, setView }) {
     });
   };
 
-  const handleLoadMixedBatch = async (batchImages) => {
-    setIsProcessing(true);
-    const newItems = [];
-    for (const imgSrc of batchImages) {
-      try {
-        const optimizedUrl = await optimizeImage(imgSrc, 800, 0.75);
-        const prediction = await processImageSrc(optimizedUrl);
-        newItems.push({
-          id: `sample-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-          imageSrc: optimizedUrl,
-          prediction,
-          timestamp: new Date().toISOString()
-        });
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    setSamples(prev => [...prev, ...newItems]);
-    setIsProcessing(false);
-  };
-
   const batchSummary = aggregateBatchPredictions(samples, lang);
   const activeSample = samples[selectedSampleIndex] || null;
 
@@ -186,9 +159,9 @@ export default function ScannerPage({ onReportGenerated, setView }) {
     setIsSaving(true);
     try {
       const reportPayload = {
-        centreName: activeCentre?.name || "Nashik APMC Main Yard",
-        centreCode: activeCentre?.code || "NSK-01",
-        farmerName: farmerName || `Grower (${batchNumber})`,
+        centreName: activeCentre?.name || "Bokaro Krishi Mandi",
+        centreCode: activeCentre?.code || "BKR-JH-01",
+        farmerName: farmerName || `Lot (${batchNumber})`,
         farmerPhone: farmerPhone || "N/A",
         batchNumber,
         sampleCount: batchSummary.sampleCount,
@@ -198,7 +171,7 @@ export default function ScannerPage({ onReportGenerated, setView }) {
         dominantClass: batchSummary.dominantClass,
         verdict: batchSummary.verdict,
         verdictMessage: batchSummary.verdictMessage,
-        inspectorName: user?.name || "Gate Officer",
+        inspectorName: user?.name || "Mandi Officer",
         sampleThumbnails: samples.slice(0, 5).map(s => s.imageSrc),
         imagesData: samples.map(s => ({
           topClass: s.prediction.topClass,
@@ -216,7 +189,7 @@ export default function ScannerPage({ onReportGenerated, setView }) {
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6 sm:py-8 space-y-6 animate-fadeIn">
+    <div className="max-w-4xl mx-auto px-4 py-6 sm:py-8 space-y-6 animate-fadeIn">
       
       {/* Hidden file input */}
       <input
@@ -237,20 +210,11 @@ export default function ScannerPage({ onReportGenerated, setView }) {
         />
       )}
 
-      {/* Preset Samples Modal */}
-      {isSampleModalOpen && (
-        <SampleImagesModal
-          onSelectSample={(dataUrl) => handleAddSample(dataUrl)}
-          onSelectMixedBatch={(batch) => handleLoadMixedBatch(batch)}
-          onClose={() => setIsSampleModalOpen(false)}
-        />
-      )}
-
       {/* Top Banner: Status & Quick Info */}
-      <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border-2 border-[#e6dfd1] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border-2 border-[#e6dfd1] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-emerald-600 animate-pulse"></span>
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse"></span>
             <span className="text-xs font-black text-emerald-900 uppercase tracking-wider">
               {modelStatusText}
             </span>
@@ -263,44 +227,33 @@ export default function ScannerPage({ onReportGenerated, setView }) {
           </p>
         </div>
 
-        {/* Action Controls */}
-        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          <button
-            onClick={() => setIsSampleModalOpen(true)}
-            className="px-3.5 py-2.5 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-950 border-2 border-amber-400 text-xs font-black flex items-center gap-1.5 transition-colors cursor-pointer min-h-[44px]"
-          >
-            <Sparkles className="w-4 h-4 text-amber-700" />
-            <span>{t.demoSamples}</span>
-          </button>
-
-          <button
-            onClick={() => setSamples([])}
-            disabled={samples.length === 0}
-            className="px-3.5 py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-black flex items-center gap-1.5 transition-colors disabled:opacity-40 border border-stone-300 min-h-[44px]"
-            title="Clear Current Batch"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>{t.resetBatch}</span>
-          </button>
-        </div>
+        <button
+          onClick={() => setSamples([])}
+          disabled={samples.length === 0}
+          className="px-4 py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-black flex items-center gap-1.5 transition-colors disabled:opacity-40 border border-stone-300 min-h-[44px] cursor-pointer"
+          title="Clear Current Batch"
+        >
+          <RotateCcw className="w-4 h-4" />
+          <span>{t.resetBatch}</span>
+        </button>
       </div>
 
-      {/* Batch Metadata Fields (Token & Lot info) */}
+      {/* Batch Metadata Fields (Compact & Clean) */}
       <div className="bg-white rounded-3xl p-4 sm:p-5 border-2 border-[#e6dfd1] shadow-xs grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
           <label className="text-[11px] font-black uppercase tracking-wider text-stone-600 flex items-center gap-1 mb-1">
             <Building2 className="w-3.5 h-3.5 text-[#0d3b32]" />
-            Mandi Centre
+            Location
           </label>
           <div className="text-sm font-black text-stone-900 truncate">
-            {activeCentre?.name}
+            {activeCentre?.name || "Bokaro Mandi, Jharkhand"}
           </div>
         </div>
 
         <div>
           <label className="text-[11px] font-black uppercase tracking-wider text-stone-600 flex items-center gap-1 mb-1">
             <User className="w-3.5 h-3.5 text-[#0d3b32]" />
-            Farmer / Vehicle Slip
+            Farmer / Lot Name
           </label>
           <input
             type="text"
@@ -313,7 +266,7 @@ export default function ScannerPage({ onReportGenerated, setView }) {
         <div>
           <label className="text-[11px] font-black uppercase tracking-wider text-stone-600 flex items-center gap-1 mb-1">
             <Hash className="w-3.5 h-3.5 text-[#0d3b32]" />
-            Gate Token #
+            Batch / Token #
           </label>
           <input
             type="text"
@@ -324,47 +277,47 @@ export default function ScannerPage({ onReportGenerated, setView }) {
         </div>
       </div>
 
-      {/* PRIMARY BURST SCAN & UPLOAD BUTTONS */}
+      {/* TWO PRIMARY ACTIONS: CAMERA & GALLERY UPLOAD */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         
         {/* Continuous Burst Camera Button */}
         <button
           onClick={() => setIsCameraOpen(true)}
           disabled={modelStatus !== 'ready' || isProcessing}
-          className="p-5 sm:p-6 rounded-3xl bg-[#0d3b32] hover:bg-[#092c25] active:scale-98 text-white shadow-xl flex items-center justify-between transition-all cursor-pointer disabled:opacity-50 min-h-[76px] border-2 border-amber-400/40"
+          className="p-5 sm:p-6 rounded-3xl bg-[#0d3b32] hover:bg-[#092c25] active:scale-98 text-white shadow-xl flex items-center justify-between transition-all cursor-pointer disabled:opacity-50 min-h-[72px] border-2 border-amber-400/40"
         >
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-amber-400 text-stone-950 flex items-center justify-center shrink-0 font-black">
-              <Camera className="w-8 h-8" />
+            <div className="w-13 h-13 rounded-2xl bg-amber-400 text-stone-950 flex items-center justify-center shrink-0 font-black">
+              <Camera className="w-7 h-7" />
             </div>
             <div className="text-left">
-              <span className="text-lg sm:text-xl font-black block">{t.takePhoto}</span>
+              <span className="text-lg font-black block">{t.takePhoto}</span>
               <span className="text-xs text-amber-200 font-bold">
-                Rapid continuous burst • 5 shots in 10s
+                Snaps 5 real onions in burst mode
               </span>
             </div>
           </div>
-          <Plus className="w-7 h-7 text-amber-300 shrink-0" />
+          <Plus className="w-6 h-6 text-amber-300 shrink-0" />
         </button>
 
         {/* Upload Button */}
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={modelStatus !== 'ready' || isProcessing}
-          className="p-5 sm:p-6 rounded-3xl bg-[#2a241e] hover:bg-black active:scale-98 text-white shadow-xl flex items-center justify-between transition-all cursor-pointer disabled:opacity-50 min-h-[76px] border-2 border-stone-600"
+          className="p-5 sm:p-6 rounded-3xl bg-[#2a241e] hover:bg-black active:scale-98 text-white shadow-xl flex items-center justify-between transition-all cursor-pointer disabled:opacity-50 min-h-[72px] border-2 border-stone-600"
         >
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-white/15 flex items-center justify-center shrink-0">
-              <Upload className="w-8 h-8 text-amber-400" />
+            <div className="w-13 h-13 rounded-2xl bg-white/15 flex items-center justify-center shrink-0">
+              <Upload className="w-7 h-7 text-amber-400" />
             </div>
             <div className="text-left">
-              <span className="text-lg sm:text-xl font-black block">{t.uploadGallery}</span>
+              <span className="text-lg font-black block">{t.uploadGallery}</span>
               <span className="text-xs text-stone-300 font-bold">
-                Pick 1 or multiple batch photos
+                Select 1 to 5 onion photos
               </span>
             </div>
           </div>
-          <Plus className="w-7 h-7 text-stone-400 shrink-0" />
+          <Plus className="w-6 h-6 text-stone-400 shrink-0" />
         </button>
 
       </div>
@@ -523,7 +476,7 @@ export default function ScannerPage({ onReportGenerated, setView }) {
               ? 'bg-emerald-50 text-emerald-950 border-emerald-400'
               : 'bg-amber-50 text-amber-950 border-amber-400'
           }`}>
-            <Sparkles className="w-5 h-5 shrink-0 text-amber-600" />
+            <span className="text-base">📢</span>
             <span>{batchSummary.verdictMessage}</span>
           </div>
 
@@ -545,10 +498,10 @@ export default function ScannerPage({ onReportGenerated, setView }) {
             />
           </div>
 
-          {/* Sticky/Prominent Action Button */}
+          {/* Action Button */}
           <div className="pt-4 border-t-2 border-stone-200 flex flex-col sm:flex-row items-center justify-between gap-4">
             <span className="text-xs text-stone-700 font-bold text-center sm:text-left">
-              Locks transparent quality record in Mandi database.
+              Locks transparent quality record in Bokaro Mandi database.
             </span>
 
             <button
@@ -572,10 +525,10 @@ export default function ScannerPage({ onReportGenerated, setView }) {
           </div>
           <div>
             <h3 className="text-lg font-black text-stone-950">
-              No Onion Samples Added Yet
+              Ready to Scan Onions
             </h3>
             <p className="text-xs sm:text-sm text-stone-600 font-bold max-w-md mx-auto mt-1">
-              Start by taking rapid continuous photos, picking images from your gallery, or loading demo specimens.
+              Place real onions on your tray, then click below to start continuous camera scanning or upload photos.
             </p>
           </div>
 
@@ -584,13 +537,13 @@ export default function ScannerPage({ onReportGenerated, setView }) {
               onClick={() => setIsCameraOpen(true)}
               className="px-6 py-3.5 rounded-xl bg-[#0d3b32] text-white font-black text-sm shadow-md hover:bg-[#092c25] cursor-pointer min-h-[48px]"
             >
-              Open Camera (Burst)
+              Open Camera (Burst Scan)
             </button>
             <button
-              onClick={() => setIsSampleModalOpen(true)}
-              className="px-6 py-3.5 rounded-xl bg-amber-100 text-amber-950 font-black text-sm hover:bg-amber-200 cursor-pointer border border-amber-300 min-h-[48px]"
+              onClick={() => fileInputRef.current?.click()}
+              className="px-6 py-3.5 rounded-xl bg-[#2a241e] text-white font-black text-sm hover:bg-black cursor-pointer min-h-[48px]"
             >
-              Load Demo Presets
+              Upload Onion Photos
             </button>
           </div>
         </div>
