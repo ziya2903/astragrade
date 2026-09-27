@@ -250,7 +250,7 @@ export default function ScannerPage({ onReportGenerated, setView }) {
             type="text"
             value={farmerName}
             onChange={(e) => setFarmerName(e.target.value)}
-            placeholder="उदा. Ziya / किसान का नाम"
+            placeholder="उदा. Manoj / किसान का नाम"
             className="w-full text-sm font-bold text-stone-950 bg-stone-50 rounded-xl px-3 py-2 border-2 border-stone-300 focus:bg-white focus:outline-hidden"
           />
         </div>
