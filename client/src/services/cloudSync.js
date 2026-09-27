@@ -85,6 +85,16 @@ initSupabaseClient(getSupabaseConfig());
  * Merge two lists of reports without duplicates, keeping latest timestamps
  */
 export function mergeReports(localReports, remoteReports) {
+  let deletedIds = new Set(['ASTRA-20260927-004', 'ASTRA-20260927-005']);
+  try {
+    const raw = localStorage.getItem('astragrade_deleted_ids');
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) arr.forEach(id => deletedIds.add(id));
+    }
+  } catch (e) {}
+
+  const now = Date.now() + 60000;
   const map = new Map();
   const seenMinuteKey = new Map();
 
@@ -96,6 +106,12 @@ export function mergeReports(localReports, remoteReports) {
   const result = [];
   for (const r of all) {
     if (!r || !r.id) continue;
+    if (deletedIds.has(r.id)) continue;
+
+    // Prune future timestamps
+    const t = new Date(r.timestamp).getTime();
+    if (!isNaN(t) && t > now) continue;
+
     if (map.has(r.id)) continue;
 
     // Prune identical duplicate spam created in loops
@@ -127,6 +143,23 @@ export async function syncWithCloud() {
   updateStatus({ state: 'syncing', error: null });
 
   try {
+    // 0. Pull server-deleted IDs to sync deletions across laptop and mobile
+    try {
+      const delRes = await fetch(`${API_BASE}/reports/deleted`);
+      if (delRes.ok) {
+        const delData = await delRes.json();
+        if (Array.isArray(delData.deletedIds)) {
+          let localDel = new Set(['ASTRA-20260927-004', 'ASTRA-20260927-005']);
+          try {
+            const raw = localStorage.getItem('astragrade_deleted_ids');
+            if (raw) JSON.parse(raw).forEach(id => localDel.add(id));
+          } catch (e) {}
+          delData.deletedIds.forEach(id => localDel.add(id));
+          localStorage.setItem('astragrade_deleted_ids', JSON.stringify([...localDel]));
+        }
+      }
+    } catch (e) {}
+
     const localReports = getLocalReports();
     let remoteReports = [];
     let syncSuccess = false;
@@ -161,7 +194,7 @@ export async function syncWithCloud() {
       } catch (e) {}
     }
 
-    // Merge local & remote reports
+    // Merge local & remote reports (respecting tombstones & timestamps)
     const merged = mergeReports(localReports, remoteReports);
 
     // Write merged back to local storage
@@ -169,10 +202,16 @@ export async function syncWithCloud() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
     } catch (e) {}
 
-    // Push local reports that were missing on remote (max 5 at a time)
+    // Push local reports that were missing on remote (max 5 at a time, never push deleted ones)
     if (syncSuccess) {
+      let currentDeleted = new Set(['ASTRA-20260927-004', 'ASTRA-20260927-005']);
+      try {
+        const raw = localStorage.getItem('astragrade_deleted_ids');
+        if (raw) JSON.parse(raw).forEach(id => currentDeleted.add(id));
+      } catch (e) {}
+
       const remoteIdSet = new Set(remoteReports.map(r => r.id));
-      const unsyncedLocals = merged.filter(r => !remoteIdSet.has(r.id)).slice(0, 5);
+      const unsyncedLocals = merged.filter(r => !remoteIdSet.has(r.id) && !currentDeleted.has(r.id)).slice(0, 5);
 
       for (const report of unsyncedLocals) {
         try {

@@ -156,32 +156,66 @@ export const SHOWCASE_BOKARO_REPORTS = [
   }
 ];
 
+export function getDeletedReportIds() {
+  try {
+    const raw = localStorage.getItem('astragrade_deleted_ids');
+    const set = new Set(raw ? JSON.parse(raw) : []);
+    // Always blacklist corrupt future seed IDs from ever appearing
+    set.add('ASTRA-20260927-004');
+    set.add('ASTRA-20260927-005');
+    return set;
+  } catch (e) {
+    return new Set(['ASTRA-20260927-004', 'ASTRA-20260927-005']);
+  }
+}
+
+export function recordDeletedReportId(id) {
+  try {
+    const set = getDeletedReportIds();
+    set.add(id);
+    localStorage.setItem('astragrade_deleted_ids', JSON.stringify(Array.from(set)));
+  } catch (e) {}
+}
+
 function getCleanLocalStorageReports() {
+  const deletedIds = getDeletedReportIds();
+  const now = Date.now() + 60000; // 1 min buffer for device clock variation
+
   try {
     const raw = localStorage.getItem('astragrade_reports');
     if (!raw) {
-      localStorage.setItem('astragrade_reports', JSON.stringify(SHOWCASE_BOKARO_REPORTS));
-      return SHOWCASE_BOKARO_REPORTS;
+      const seeded = localStorage.getItem('astragrade_seeded');
+      if (!seeded) {
+        localStorage.setItem('astragrade_seeded', 'true');
+        const initial = SHOWCASE_BOKARO_REPORTS.filter(r => !deletedIds.has(r.id));
+        localStorage.setItem('astragrade_reports', JSON.stringify(initial));
+        return initial;
+      }
+      return [];
     }
+
     let parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      localStorage.setItem('astragrade_reports', JSON.stringify(SHOWCASE_BOKARO_REPORTS));
-      return SHOWCASE_BOKARO_REPORTS;
-    }
+    if (!Array.isArray(parsed)) return [];
 
     // Purge stale Nashik
     if (parsed.some(r => r?.centreName?.includes('Nashik') || r?.centreCode?.includes('NSK'))) {
       parsed = SHOWCASE_BOKARO_REPORTS;
     }
 
-    // Smart deduplication: prune exact identical batches created in sync loops
+    // Smart deduplication and tombstone pruning
     const seenMinutes = new Set();
     const seenIds = new Set();
     const deduplicated = [];
 
     for (const r of parsed) {
       if (!r || !r.id) continue;
+      // Drop deleted IDs
+      if (deletedIds.has(r.id)) continue;
       if (seenIds.has(r.id)) continue;
+
+      // Drop future timestamps
+      const t = new Date(r.timestamp).getTime();
+      if (!isNaN(t) && t > now) continue;
 
       // Group by farmer + batch + minute (removes identical loop copies)
       const minuteKey = `${r.farmerName}_${r.batchNumber}_${(r.timestamp || '').slice(0, 16)}`;
@@ -198,7 +232,7 @@ function getCleanLocalStorageReports() {
     localStorage.setItem('astragrade_reports', JSON.stringify(deduplicated));
     return deduplicated;
   } catch (e) {
-    return SHOWCASE_BOKARO_REPORTS;
+    return [];
   }
 }
 
@@ -287,7 +321,10 @@ export async function saveReport(reportData) {
 }
 
 export async function deleteReport(id) {
-  // 1. Instant local deletion
+  // 1. Record in tombstone registry so cloud sync never resurrects it
+  recordDeletedReportId(id);
+
+  // 2. Instant local deletion
   let updated = [];
   try {
     const list = getCleanLocalStorageReports();
@@ -295,12 +332,10 @@ export async function deleteReport(id) {
     localStorage.setItem('astragrade_reports', JSON.stringify(updated));
   } catch (e) {}
 
-  // 2. Propagate deletion to serverless API
+  // 3. Propagate deletion to serverless API
   try {
     fetch(`${API_BASE}/reports/${id}`, {
       method: 'DELETE'
-    }).then(() => {
-      syncWithCloud().catch(() => {});
     }).catch(() => {});
   } catch (e) {}
 

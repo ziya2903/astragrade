@@ -11,6 +11,8 @@ app.use(express.json({ limit: '15mb' }));
 
 const DATA_DIR = process.env.VERCEL ? '/tmp' : path.join(__dirname, 'data');
 const REPORTS_FILE = path.join(DATA_DIR, 'reports.json');
+const DELETED_FILE = path.join(DATA_DIR, 'deleted_reports.json');
+const BANNED_IDS = new Set(['ASTRA-20260927-004', 'ASTRA-20260927-005']);
 
 try {
   if (!fs.existsSync(DATA_DIR)) {
@@ -18,6 +20,26 @@ try {
   }
 } catch (e) {
   console.warn("Could not create DATA_DIR:", e.message);
+}
+
+function getDeletedReportIds() {
+  try {
+    if (fs.existsSync(DELETED_FILE)) {
+      const data = JSON.parse(fs.readFileSync(DELETED_FILE, 'utf-8'));
+      if (Array.isArray(data)) {
+        data.forEach(id => BANNED_IDS.add(id));
+      }
+    }
+  } catch (e) {}
+  return BANNED_IDS;
+}
+
+function recordDeletedReportId(id) {
+  const set = getDeletedReportIds();
+  set.add(id);
+  try {
+    fs.writeFileSync(DELETED_FILE, JSON.stringify([...set], null, 2));
+  } catch (e) {}
 }
 
 // Initial seed data for Bokaro Mandi, Jharkhand
@@ -100,9 +122,21 @@ try {
 }
 
 function getStoredReports() {
+  const deletedSet = getDeletedReportIds();
+  const now = Date.now() + 60000; // 1 min drift allowance
   try {
     const data = fs.readFileSync(REPORTS_FILE, 'utf-8');
-    return JSON.parse(data);
+    const parsed = JSON.parse(data);
+    if (!Array.isArray(parsed)) return INITIAL_REPORTS;
+
+    // Prune deleted IDs and future-dated records
+    return parsed.filter(r => {
+      if (!r || !r.id) return false;
+      if (deletedSet.has(r.id)) return false;
+      const t = new Date(r.timestamp).getTime();
+      if (!isNaN(t) && t > now) return false;
+      return true;
+    });
   } catch (err) {
     console.error("Error reading reports file:", err);
     return INITIAL_REPORTS;
@@ -110,9 +144,19 @@ function getStoredReports() {
 }
 
 function saveStoredReports(reports) {
+  const deletedSet = getDeletedReportIds();
+  const now = Date.now() + 60000;
+  const sanitized = (reports || []).filter(r => {
+    if (!r || !r.id) return false;
+    if (deletedSet.has(r.id)) return false;
+    const t = new Date(r.timestamp).getTime();
+    if (!isNaN(t) && t > now) return false;
+    return true;
+  });
+
   const tmpFile = `${REPORTS_FILE}.tmp`;
   try {
-    fs.writeFileSync(tmpFile, JSON.stringify(reports, null, 2));
+    fs.writeFileSync(tmpFile, JSON.stringify(sanitized, null, 2));
     fs.renameSync(tmpFile, REPORTS_FILE);
   } catch (err) {
     console.error("Error writing reports file atomically:", err);
@@ -167,6 +211,11 @@ app.get('/api/reports/:id', (req, res) => {
   res.json({ success: true, report });
 });
 
+app.get('/api/reports/deleted', (req, res) => {
+  const set = getDeletedReportIds();
+  res.json({ success: true, deletedIds: Array.from(set) });
+});
+
 app.post('/api/reports', (req, res) => {
   const {
     centreName,
@@ -195,6 +244,17 @@ app.post('/api/reports', (req, res) => {
   const uniqueSeq = String(reports.length + 1).padStart(3, '0');
   const targetId = req.body.id || `ASTRA-${dateStr}-${uniqueSeq}`;
 
+  const deletedSet = getDeletedReportIds();
+  if (deletedSet.has(targetId)) {
+    return res.status(410).json({ success: false, message: 'This report was deleted' });
+  }
+
+  // Ensure timestamp is never in the future
+  let safeTimestamp = req.body.timestamp || new Date().toISOString();
+  if (new Date(safeTimestamp).getTime() > Date.now() + 60000) {
+    safeTimestamp = new Date().toISOString();
+  }
+
   const newReport = {
     id: targetId,
     centreName: centreName || "Bokaro Krishi Mandi",
@@ -202,7 +262,7 @@ app.post('/api/reports', (req, res) => {
     farmerName: farmerName || "Farmer Lot",
     farmerPhone: farmerPhone || "N/A",
     batchNumber: batchNumber || `LOT-${Math.floor(100 + Math.random() * 900)}`,
-    timestamp: req.body.timestamp || new Date().toISOString(),
+    timestamp: safeTimestamp,
     sampleCount: sampleCount || 1,
     gradeAPercent: Number(Number(gradeAPercent).toFixed(1)),
     ursPercent: Number(Number(ursPercent).toFixed(1)),
@@ -240,6 +300,7 @@ app.post('/api/reports/reset', (req, res) => {
 
 app.delete('/api/reports/:id', (req, res) => {
   const { id } = req.params;
+  recordDeletedReportId(id);
   let reports = getStoredReports();
   const initialLength = reports.length;
   reports = reports.filter(r => r.id !== id);

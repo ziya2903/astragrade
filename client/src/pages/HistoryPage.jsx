@@ -179,103 +179,194 @@ export default function HistoryPage({ onViewReport, setView }) {
             </button>
           </div>
         ) : (
-          <div className="space-y-3.5 sm:space-y-0 sm:bg-white sm:rounded-3xl sm:border sm:border-stone-200 sm:shadow-sm sm:overflow-hidden sm:divide-y sm:divide-stone-100">
+          <div className="space-y-4 sm:space-y-0 sm:bg-white sm:rounded-3xl sm:border sm:border-stone-200 sm:shadow-sm sm:overflow-hidden sm:divide-y sm:divide-stone-100">
             {filteredReports.map((report) => {
               const isGradeA = report.verdict === 'Grade A';
 
               return (
-                <div
-                  key={report.id}
-                  onClick={() => onViewReport(report)}
-                  className="bg-white rounded-2xl p-4 sm:p-5 border-2 border-stone-200 sm:border-0 sm:rounded-none shadow-xs sm:shadow-none hover:border-[#0d3b32] sm:hover:bg-stone-50/80 transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-3 sm:gap-4 cursor-pointer group"
-                >
-                  {/* Left: Info */}
-                  <div className="flex items-start gap-3 sm:gap-4 w-full md:w-auto">
-                    <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shrink-0 mt-0.5 ${
-                      isGradeA ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-                    }`}>
-                      {isGradeA ? (
-                        <CheckCircle2 className="w-6 h-6" />
-                      ) : (
-                        <AlertTriangle className="w-6 h-6" />
-                      )}
+                <div key={report.id}>
+                  {/* MOBILE VIEW: Dedicated Standalone Card for Each Batch */}
+                  <div
+                    onClick={() => onViewReport(report)}
+                    className="block sm:hidden bg-white rounded-2xl p-4 border-2 border-stone-300 shadow-sm space-y-3 cursor-pointer hover:border-[#0d3b32] transition-all"
+                  >
+                    {/* Header Row: Badges & Verdict */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 font-mono text-xs font-black text-stone-900 bg-stone-100 px-2.5 py-1 rounded-lg border border-stone-200">
+                        <span>{report.id}</span>
+                        <span className="text-stone-300">•</span>
+                        <span className="text-stone-600 truncate max-w-[120px]">{report.batchNumber || "LOT-01"}</span>
+                      </div>
+                      <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${
+                        isGradeA ? 'bg-emerald-100 text-emerald-950 border border-emerald-300' : 'bg-rose-100 text-rose-950 border border-rose-300'
+                      }`}>
+                        {isGradeA ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" /> : <AlertTriangle className="w-3.5 h-3.5 text-rose-700" />}
+                        {report.verdict}
+                      </span>
                     </div>
 
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                        <span className="font-mono text-[11px] sm:text-xs font-bold text-stone-900 bg-stone-100 px-2 py-0.5 rounded-md">
-                          {report.id}
-                        </span>
-                        <span className="text-xs text-stone-400">•</span>
-                        <span className="font-mono text-[11px] sm:text-xs font-semibold text-stone-600 truncate">
-                          {report.batchNumber || "LOT-01"}
-                        </span>
-                      </div>
-
-                      <h4 className="text-base sm:text-lg font-black text-stone-950 group-hover:text-emerald-700 transition-colors mt-1 truncate">
+                    {/* Farmer & Mandi Info */}
+                    <div>
+                      <h4 className="text-base font-black text-stone-950 leading-snug">
                         {report.farmerName || "Grower"}
                       </h4>
-
-                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-stone-500 mt-1">
+                      <p className="text-xs text-stone-600 font-bold flex flex-wrap items-center gap-2 mt-1">
                         <span className="flex items-center gap-1">
-                          <MapPin className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                          <MapPin className="w-3 h-3 text-amber-600" />
                           <span>{report.centreName}</span>
                         </span>
                         <span>•</span>
                         <span className="flex items-center gap-1">
-                          <Calendar className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                          <Calendar className="w-3 h-3 text-stone-400" />
                           <span>
                             {new Date(report.timestamp).toLocaleString(undefined, {
-                              dateStyle: 'medium',
-                              timeStyle: 'short'
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
                             })}
                           </span>
                         </span>
                         <span>•</span>
                         <span>{report.sampleCount || 1} sample(s)</span>
-                      </div>
+                      </p>
                     </div>
-                  </div>
 
-                  {/* Right: Scores & Actions */}
-                  <div className="flex items-center justify-between w-full md:w-auto gap-4 pt-3 sm:pt-0 border-t border-stone-100 sm:border-t-0">
-                    <div className="text-left md:text-right">
-                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider ${
-                        isGradeA ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-                      }`}>
-                        {report.verdict}
-                      </span>
-                      <div className="text-xs font-bold text-stone-700 mt-1">
-                        Grade A: <span className="text-emerald-700 font-black">{report.gradeAPercent}%</span>
-                        <span className="text-stone-300 mx-1">|</span>
-                        URS: <span className="text-rose-700 font-black">{report.ursPercent}%</span>
+                    {/* Visual Quality Bar */}
+                    <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-200 space-y-1.5">
+                      <div className="flex justify-between text-xs font-black">
+                        <span className="text-emerald-800">Grade A: {report.gradeAPercent}%</span>
+                        <span className="text-rose-800">URS: {report.ursPercent}%</span>
+                      </div>
+                      <div className="w-full h-2.5 bg-rose-200 rounded-full overflow-hidden flex">
+                        <div
+                          className="h-full bg-emerald-600 rounded-full transition-all"
+                          style={{ width: `${Math.min(100, Math.max(0, report.gradeAPercent))}%` }}
+                        />
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                    {/* Mobile Action Buttons */}
+                    <div className="flex items-center gap-2 pt-1 border-t border-stone-100">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onViewReport(report); }}
+                        className="flex-1 py-2.5 bg-[#0d3b32] hover:bg-[#0a2e27] text-white text-xs font-black rounded-xl flex items-center justify-center gap-1.5 shadow-sm min-h-[42px]"
+                      >
+                        <Eye className="w-4 h-4 text-amber-300" />
+                        <span>View Report</span>
+                      </button>
+
                       <button
                         onClick={(e) => handleDownload(e, report)}
-                        title="Download PDF Certificate"
-                        className="p-2.5 bg-stone-100 hover:bg-emerald-600 hover:text-white text-stone-700 rounded-xl transition-all cursor-pointer shadow-2xs min-h-[40px] min-w-[40px] flex items-center justify-center"
+                        title="Download PDF"
+                        className="p-2.5 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-xl border border-stone-300 flex items-center justify-center min-h-[42px] min-w-[42px]"
                       >
                         <Download className="w-4 h-4" />
                       </button>
 
                       <button
-                        onClick={() => onViewReport(report)}
-                        className="px-3.5 py-2 bg-stone-900 hover:bg-black text-white text-xs font-black rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer min-h-[40px]"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>View</span>
-                      </button>
-
-                      <button
                         onClick={(e) => handleDeleteReport(e, report)}
                         title="Delete Report"
-                        className="p-2.5 bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-600 rounded-xl transition-all cursor-pointer shadow-2xs min-h-[40px] min-w-[40px] flex items-center justify-center"
+                        className="p-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl border border-rose-200 flex items-center justify-center min-h-[42px] min-w-[42px]"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
+                    </div>
+                  </div>
+
+                  {/* DESKTOP VIEW: Sleek Table Row */}
+                  <div
+                    onClick={() => onViewReport(report)}
+                    className="hidden sm:flex p-4 sm:p-5 hover:bg-stone-50/80 transition-all items-center justify-between gap-4 cursor-pointer group"
+                  >
+                    {/* Left: Info */}
+                    <div className="flex items-center gap-4">
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
+                        isGradeA ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                      }`}>
+                        {isGradeA ? (
+                          <CheckCircle2 className="w-6 h-6" />
+                        ) : (
+                          <AlertTriangle className="w-6 h-6" />
+                        )}
+                      </div>
+
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-bold text-stone-900 bg-stone-100 px-2 py-0.5 rounded-md">
+                            {report.id}
+                          </span>
+                          <span className="text-xs text-stone-400">•</span>
+                          <span className="font-mono text-xs font-semibold text-stone-600">
+                            {report.batchNumber || "LOT-01"}
+                          </span>
+                        </div>
+
+                        <h4 className="text-base font-black text-stone-950 group-hover:text-emerald-700 transition-colors mt-0.5">
+                          {report.farmerName || "Grower"}
+                        </h4>
+
+                        <div className="flex items-center gap-3 text-xs text-stone-500 mt-0.5">
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-3.5 h-3.5 text-stone-400" />
+                            <span>{report.centreName}</span>
+                          </span>
+                          <span>•</span>
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5 text-stone-400" />
+                            <span>
+                              {new Date(report.timestamp).toLocaleString(undefined, {
+                                dateStyle: 'medium',
+                                timeStyle: 'short'
+                              })}
+                            </span>
+                          </span>
+                          <span>•</span>
+                          <span>{report.sampleCount || 1} sample(s)</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right: Scores & Actions */}
+                    <div className="flex items-center gap-4 shrink-0">
+                      <div className="text-right">
+                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider ${
+                          isGradeA ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                        }`}>
+                          {report.verdict}
+                        </span>
+                        <div className="text-xs font-bold text-stone-700 mt-1">
+                          Grade A: <span className="text-emerald-700 font-black">{report.gradeAPercent}%</span>
+                          <span className="text-stone-300 mx-1">|</span>
+                          URS: <span className="text-rose-700 font-black">{report.ursPercent}%</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => handleDownload(e, report)}
+                          title="Download PDF Certificate"
+                          className="p-2.5 bg-stone-100 hover:bg-emerald-600 hover:text-white text-stone-700 rounded-xl transition-all cursor-pointer shadow-2xs min-h-[40px] min-w-[40px] flex items-center justify-center"
+                        >
+                          <Download className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          onClick={() => onViewReport(report)}
+                          className="px-3.5 py-2 bg-stone-900 hover:bg-black text-white text-xs font-black rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer min-h-[40px]"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>View</span>
+                        </button>
+
+                        <button
+                          onClick={(e) => handleDeleteReport(e, report)}
+                          title="Delete Report"
+                          className="p-2.5 bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-600 rounded-xl transition-all cursor-pointer shadow-2xs min-h-[40px] min-w-[40px] flex items-center justify-center"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -30,8 +30,8 @@ export default function ScannerPage({ onReportGenerated, setView }) {
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Mandi Gate Token Data (Clear, unambiguous fields)
-  const [farmerName, setFarmerName] = useState('Rajesh Kumar Mahto');
-  const [batchNumber, setBatchNumber] = useState(`JH-09-AB-${Math.floor(1000 + Math.random() * 9000)}`);
+  const [farmerName, setFarmerName] = useState('');
+  const [batchNumber, setBatchNumber] = useState(`LOT-JH-${Math.floor(100 + Math.random() * 900)}`);
   const [bagCount, setBagCount] = useState('50 Bags');
 
   // Scanned Samples: array of { id, imageSrc, prediction, timestamp }
@@ -250,7 +250,7 @@ export default function ScannerPage({ onReportGenerated, setView }) {
             type="text"
             value={farmerName}
             onChange={(e) => setFarmerName(e.target.value)}
-            placeholder="उदा. राजेश कुमार महतो"
+            placeholder="उदा. Ziya / किसान का नाम"
             className="w-full text-sm font-bold text-stone-950 bg-stone-50 rounded-xl px-3 py-2 border-2 border-stone-300 focus:bg-white focus:outline-hidden"
           />
         </div>
